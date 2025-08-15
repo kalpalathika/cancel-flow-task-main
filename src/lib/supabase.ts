@@ -8,23 +8,48 @@ import { logEnvironmentStatus } from './env-check';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Validate environment variables
-const envStatus = logEnvironmentStatus();
-if (!envStatus.isValid) {
-  throw new Error(`Missing required environment variables: ${envStatus.missing.join(', ')}`);
+// Debug environment variables
+console.log('Supabase client initialization:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  urlPreview: supabaseUrl?.substring(0, 30) + '...',
+  isClient: typeof window !== 'undefined'
+});
+
+// Validate environment variables (only on server-side or when variables are available)
+if (supabaseUrl && supabaseAnonKey) {
+  // Environment variables are available, proceed normally
+  if (typeof window === 'undefined') {
+    // Server-side: log validation status
+    logEnvironmentStatus();
+  }
+} else {
+  // Missing environment variables
+  if (typeof window === 'undefined') {
+    // Server-side: this is a real error
+    const envStatus = logEnvironmentStatus();
+    throw new Error(`Missing required environment variables: ${envStatus.missing.join(', ')}`);
+  } else {
+    // Client-side: this should not happen if Next.js is working properly
+    console.error('🔥 Environment variables missing on client-side - this indicates a Next.js configuration issue');
+  }
 }
 
-export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10, // Rate limiting for realtime events
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key', 
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
     },
-  },
-});
+    realtime: {
+      params: {
+        eventsPerSecond: 10, // Rate limiting for realtime events
+      },
+    },
+  }
+);
 
 // Server-side client with service role key for admin operations
 // Only create admin client if we have the service role key (server-side only)
@@ -40,7 +65,7 @@ export const supabaseAdmin = (() => {
     return null;
   }
   
-  return createClient(supabaseUrl!, serviceRoleKey, {
+  return createClient(supabaseUrl || 'https://placeholder.supabase.co', serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
