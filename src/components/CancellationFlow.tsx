@@ -11,6 +11,8 @@ import YesLawyerCompletionStep from './YesLawyerCompletionStep';
 import JobSearchDownsellStep from './JobSearchDownsellStep';
 import SubscriptionContinuedStep from './SubscriptionContinuedStep';
 import JobSearchSurveyStep from './JobSearchSurveyStep';
+import CancellationReasonStep from './CancellationReasonStep';
+import FinalCancellationStep from './FinalCancellationStep';
 
 interface CancellationFlowProps {
   isOpen: boolean;
@@ -18,7 +20,7 @@ interface CancellationFlowProps {
   onJobFoundResponse: (foundJob: boolean) => void;
 }
 
-type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion' | 'job-search-downsell' | 'subscription-continued' | 'job-search-survey';
+type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion' | 'job-search-downsell' | 'subscription-continued' | 'job-search-survey' | 'cancellation-reason' | 'final-cancellation';
 
 export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }: CancellationFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('initial');
@@ -126,9 +128,48 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
   };
 
   const handleJobSearchSurveyComplete = () => {
-    // User completed the survey without accepting offer, complete cancellation
+    // User completed the survey without accepting offer, go to cancellation reason step
+    setCurrentStep('cancellation-reason');
+  };
+
+  const handleCancellationReasonAcceptOffer = () => {
+    // User accepted 50% off from cancellation reason, go to subscription continued
+    setCurrentStep('subscription-continued');
+  };
+
+  const handleCancellationReasonComplete = () => {
+    // User completed cancellation reason without accepting offer, show final cancellation screen
+    setCurrentStep('final-cancellation');
+  };
+
+  const handleFinalCancellationBackToJobs = () => {
+    // User clicked back to jobs, complete the cancellation flow
     onJobFoundResponse(false);
   };
+
+  // Show final cancellation step
+  if (currentStep === 'final-cancellation') {
+    return (
+      <FinalCancellationStep
+        isOpen={true}
+        onClose={onClose}
+        onBackToJobs={handleFinalCancellationBackToJobs}
+      />
+    );
+  }
+
+  // Show cancellation reason step
+  if (currentStep === 'cancellation-reason') {
+    return (
+      <CancellationReasonStep
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setCurrentStep('job-search-survey')}
+        onAcceptOffer={handleCancellationReasonAcceptOffer}
+        onComplete={handleCancellationReasonComplete}
+      />
+    );
+  }
 
   // Show job search survey step
   if (currentStep === 'job-search-survey') {

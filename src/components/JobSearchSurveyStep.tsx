@@ -46,6 +46,11 @@ export default function JobSearchSurveyStep({
   };
 
   const showWarning = showWarningState || (!isComplete && hasAttemptedSubmit);
+  
+  // Override the continue button state - it should be red when complete, regardless of warning state
+  const continueButtonStyle = isComplete 
+    ? 'bg-red-600 text-white hover:bg-red-700' 
+    : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed';
 
   const OptionButton = ({ 
     value, 
@@ -171,13 +176,10 @@ export default function JobSearchSurveyStep({
           
           <button
             onClick={handleContinue}
-            className={`h-10 lg:h-12 w-full rounded-lg font-semibold text-sm lg:text-base transition-colors ${
-              showWarning && isComplete
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-[#e6e6e6] text-[#b5b3af] hover:bg-gray-300'
-            }`}
+            className={`h-10 lg:h-12 w-full rounded-lg font-semibold text-sm lg:text-base transition-colors ${continueButtonStyle}`}
+            disabled={!isComplete}
           >
-            {showWarning && isComplete ? 'Complete cancellation' : 'Continue'}
+            {isComplete ? 'Complete cancellation' : 'Continue'}
           </button>
         </div>
       </div>
@@ -288,13 +290,10 @@ export default function JobSearchSurveyStep({
           
           <button
             onClick={handleContinue}
-            className={`h-12 w-full rounded-lg font-semibold text-base transition-colors ${
-              showWarning && isComplete
-                ? 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800'
-                : 'bg-[#e6e6e6] text-[#b5b3af] hover:bg-gray-300'
-            }`}
+            className={`h-12 w-full rounded-lg font-semibold text-base transition-colors ${continueButtonStyle} ${isComplete ? 'active:bg-red-800' : ''}`}
+            disabled={!isComplete}
           >
-            {showWarning && isComplete ? 'Complete cancellation' : 'Continue'}
+            {isComplete ? 'Complete cancellation' : 'Continue'}
           </button>
         </div>
       </div>
