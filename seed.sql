@@ -21,15 +21,27 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create cancellations table
+-- Create cancellations table with enhanced fields
 CREATE TABLE IF NOT EXISTS cancellations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   subscription_id UUID REFERENCES subscriptions(id) ON DELETE CASCADE,
   downsell_variant TEXT NOT NULL CHECK (downsell_variant IN ('A', 'B')),
-  reason TEXT,
+  
+  -- Cancellation journey tracking
+  cancellation_step TEXT, -- Which step initiated the cancellation
+  job_found BOOLEAN, -- Whether user found a job
+  found_with_migrate_mate BOOLEAN, -- If job was found through Migrate Mate
+  feedback_text TEXT, -- User feedback from feedback step
+  reason TEXT, -- Cancellation reason selected by user
+  visa_type TEXT, -- Visa type entered by user (if applicable)
+  has_lawyer BOOLEAN, -- Whether user has a lawyer (if applicable)
   accepted_downsell BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  final_outcome TEXT, -- Track final flow outcome (cancelled, continued, etc.)
+  
+  -- Metadata
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Enable Row Level Security
@@ -62,6 +74,8 @@ CREATE POLICY "Users can insert own cancellations" ON cancellations
     auth.uid() = user_id AND
     downsell_variant IN ('A', 'B') AND
     (reason IS NULL OR length(reason) <= 500) AND
+    (feedback_text IS NULL OR length(feedback_text) <= 2000) AND
+    (visa_type IS NULL OR length(visa_type) <= 100) AND
     accepted_downsell IS NOT NULL
   );
 
@@ -95,4 +109,15 @@ INSERT INTO subscriptions (user_id, monthly_price, status) VALUES
   ('550e8400-e29b-41d4-a716-446655440001', 2500, 'active'), -- $25.00
   ('550e8400-e29b-41d4-a716-446655440002', 2900, 'active'), -- $29.00
   ('550e8400-e29b-41d4-a716-446655440003', 2500, 'active')  -- $25.00
-ON CONFLICT DO NOTHING; 
+ON CONFLICT DO NOTHING;
+
+-- Add performance indexes for cancellations table
+CREATE INDEX IF NOT EXISTS idx_cancellations_user_id ON cancellations(user_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_subscription_id ON cancellations(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_cancellations_variant ON cancellations(downsell_variant);
+CREATE INDEX IF NOT EXISTS idx_cancellations_created_at ON cancellations(created_at);
+CREATE INDEX IF NOT EXISTS idx_cancellations_outcome ON cancellations(final_outcome);
+
+-- Add index for subscription status queries
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status); 

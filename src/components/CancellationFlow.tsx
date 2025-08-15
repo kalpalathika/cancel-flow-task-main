@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BaseModal from './BaseModal';
+import { cancellationService } from '../lib/cancellation-service';
+import type { CancellationSession } from '../types/cancellation';
 import CongratsSurvey from './CongratsSurvey';
 import FeedbackStep from './FeedbackStep';
 import VisaOfferStep from './VisaOfferStep';
@@ -26,17 +28,113 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
   const [currentStep, setCurrentStep] = useState<FlowStep>('initial');
   const [userFoundJob, setUserFoundJob] = useState<boolean>(false);
   const [foundWithMigrateMate, setFoundWithMigrateMate] = useState<boolean>(false);
+  const [cancellationSession, setCancellationSession] = useState<CancellationSession | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+
+  // Mock user ID - in real app this would come from auth context
+  // Using the first user ID from your database
+  const userId = '550e8400-e29b-41d4-a716-446655440001';
+
+  // Initialize cancellation session when modal opens
+  useEffect(() => {
+    if (isOpen && !cancellationSession && !isLoading && !error) {
+      initializeCancellation();
+    }
+  }, [isOpen, cancellationSession, isLoading, error]);
+
+  const initializeCancellation = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const result = await cancellationService.initializeCancellation(userId);
+      
+      if (result.success && result.data) {
+        setCancellationSession(result.data);
+        setCurrentStep(result.data.currentStep as FlowStep);
+        
+        // Restore previous state if resuming session
+        if (result.data.jobFound !== undefined) {
+          setUserFoundJob(result.data.jobFound);
+        }
+        if (result.data.foundWithMigrateMate !== undefined) {
+          setFoundWithMigrateMate(result.data.foundWithMigrateMate);
+        }
+      } else {
+        setError(result.error?.message || 'Failed to initialize cancellation');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Cancellation initialization error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!isOpen) {
     // Reset flow when modal closes
     if (currentStep !== 'initial') {
       setCurrentStep('initial');
+      setCancellationSession(null);
+      setError('');
     }
     return null;
   }
 
-  const handleJobResponse = (foundJob: boolean) => {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <BaseModal isOpen={true} onClose={onClose} title="Loading...">
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8952fc] mx-auto mb-4"></div>
+            <p className="text-gray-600">Initializing cancellation flow...</p>
+          </div>
+        </div>
+      </BaseModal>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <BaseModal isOpen={true} onClose={onClose} title="Error">
+        <div className="flex flex-col items-center justify-center p-8 text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Something went wrong</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError('');
+              initializeCancellation();
+            }}
+            className="px-4 py-2 bg-[#8952fc] text-white rounded-lg hover:bg-[#7b40fc] transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      </BaseModal>
+    );
+  }
+
+  const handleJobResponse = async (foundJob: boolean) => {
     setUserFoundJob(foundJob);
+    
+    // Update cancellation record with job found status
+    if (cancellationSession?.id) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id,
+        userId,
+        'initial',
+        { job_found: foundJob }
+      );
+    }
+    
     if (foundJob) {
       // If they found a job, go to congrats survey first
       setCurrentStep('survey');
@@ -46,10 +144,26 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     }
   };
 
-  const handleSurveyComplete = (responses: Record<string, unknown>) => {
+  const handleSurveyComplete = async (responses: Record<string, unknown>) => {
     console.log('Survey responses:', responses);
     const foundJobWithMM = responses.foundWithMigrateMate as boolean;
     setFoundWithMigrateMate(foundJobWithMM);
+    
+    // Save survey response to database
+    if (cancellationSession) {
+      await cancellationService.processSurveyResponse(
+        cancellationSession.id!,
+        userId,
+        {
+          foundJob: userFoundJob,
+          foundWithMigrateMate: foundJobWithMM,
+          jobTitle: responses.jobTitle as string,
+          companyName: responses.companyName as string,
+          salary: responses.salary as number,
+          startDate: responses.startDate as string
+        }
+      );
+    }
     
     // Always go to feedback step after survey, regardless of MM response
     setCurrentStep('feedback');
@@ -59,8 +173,21 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     setCurrentStep('initial');
   };
 
-  const handleFeedbackSubmit = (feedback: string) => {
+  const handleFeedbackSubmit = async (feedback: string) => {
     console.log('Feedback submitted:', feedback);
+    
+    // Save feedback to database
+    if (cancellationSession) {
+      await cancellationService.processFeedbackResponse(
+        cancellationSession.id!,
+        userId,
+        {
+          text: feedback,
+          step: 'feedback',
+          timestamp: new Date()
+        }
+      );
+    }
     
     // Check if they found job with Migrate Mate from survey
     if (userFoundJob && foundWithMigrateMate) {
@@ -75,8 +202,21 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     }
   };
 
-  const handleVisaOfferComplete = (hasLawyer: boolean, visaType?: string) => {
+  const handleVisaOfferComplete = async (hasLawyer: boolean, visaType?: string) => {
     console.log('Visa offer response:', hasLawyer, 'Visa type:', visaType);
+    
+    // Save visa offer response to database
+    if (cancellationSession) {
+      await cancellationService.processVisaOfferResponse(
+        cancellationSession.id!,
+        userId,
+        {
+          hasLawyer,
+          visaType
+        }
+      );
+    }
+    
     // If they have a lawyer (Yes), show yes-lawyer completion screen
     if (hasLawyer) {
       setCurrentStep('yes-lawyer-completion');
@@ -97,52 +237,143 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     }
   };
 
-  const handleCompletionFinish = () => {
+  const handleCompletionFinish = async () => {
+    // Finalize cancellation with continued outcome
+    if (cancellationSession) {
+      await cancellationService.finalizeCancellation(
+        cancellationSession.id!,
+        userId,
+        'continued'
+      );
+    }
+    
     // Complete the cancellation flow
     onJobFoundResponse(true);
   };
 
-  const handleYesLawyerCompletionFinish = () => {
+  const handleYesLawyerCompletionFinish = async () => {
+    // Finalize cancellation with continued outcome
+    if (cancellationSession) {
+      await cancellationService.finalizeCancellation(
+        cancellationSession.id!,
+        userId,
+        'continued'
+      );
+    }
+    
     // Complete the cancellation flow
     onJobFoundResponse(true);
   };
 
-  const handleJobSearchDownsellAccept = () => {
+  const handleJobSearchDownsellAccept = async () => {
+    // Mark downsell as accepted
+    if (cancellationSession) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id!,
+        userId,
+        'job-search-downsell',
+        { accepted_downsell: true }
+      );
+    }
+    
     // User accepted the downsell offer, show subscription continued screen
     setCurrentStep('subscription-continued');
   };
 
-  const handleJobSearchDownsellDecline = () => {
+  const handleJobSearchDownsellDecline = async () => {
+    // Mark downsell as declined
+    if (cancellationSession) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id!,
+        userId,
+        'job-search-downsell',
+        { accepted_downsell: false }
+      );
+    }
+    
     // User declined the downsell offer, go to survey step
     setCurrentStep('job-search-survey');
   };
 
-  const handleSubscriptionContinuedFinish = () => {
+  const handleSubscriptionContinuedFinish = async () => {
+    // Finalize with downsell accepted outcome
+    if (cancellationSession) {
+      await cancellationService.finalizeCancellation(
+        cancellationSession.id!,
+        userId,
+        'downsell_accepted'
+      );
+    }
+    
     // User completed the subscription continuation, go to survey step
     setCurrentStep('job-search-survey');
   };
 
-  const handleJobSearchSurveyAcceptOffer = () => {
+  const handleJobSearchSurveyAcceptOffer = async () => {
+    // Mark second downsell as accepted
+    if (cancellationSession) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id!,
+        userId,
+        'job-search-survey',
+        { accepted_downsell: true }
+      );
+    }
+    
     // User accepted 50% off from survey, go to subscription continued
     setCurrentStep('subscription-continued');
   };
 
-  const handleJobSearchSurveyComplete = () => {
+  const handleJobSearchSurveyComplete = async () => {
+    // Track survey completion
+    if (cancellationSession) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id!,
+        userId,
+        'job-search-survey',
+        { cancellation_step: 'job-search-survey' }
+      );
+    }
+    
     // User completed the survey without accepting offer, go to cancellation reason step
     setCurrentStep('cancellation-reason');
   };
 
-  const handleCancellationReasonAcceptOffer = () => {
+  const handleCancellationReasonAcceptOffer = async () => {
+    // Mark final downsell as accepted
+    if (cancellationSession) {
+      await cancellationService.updateCancellationStep(
+        cancellationSession.id!,
+        userId,
+        'cancellation-reason',
+        { accepted_downsell: true }
+      );
+    }
+    
     // User accepted 50% off from cancellation reason, go to subscription continued
     setCurrentStep('subscription-continued');
   };
 
-  const handleCancellationReasonComplete = () => {
+  const handleCancellationReasonComplete = async () => {
+    // Mark subscription as pending cancellation
+    if (cancellationSession) {
+      await cancellationService.markSubscriptionPendingCancellation(userId);
+    }
+    
     // User completed cancellation reason without accepting offer, show final cancellation screen
     setCurrentStep('final-cancellation');
   };
 
-  const handleFinalCancellationBackToJobs = () => {
+  const handleFinalCancellationBackToJobs = async () => {
+    // Finalize cancellation
+    if (cancellationSession) {
+      await cancellationService.finalizeCancellation(
+        cancellationSession.id!,
+        userId,
+        'cancelled'
+      );
+    }
+    
     // User clicked back to jobs, complete the cancellation flow
     onJobFoundResponse(false);
   };

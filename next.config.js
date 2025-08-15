@@ -52,9 +52,9 @@ const nextConfig = {
   // Additional security configurations
   poweredByHeader: false, // Hide X-Powered-By header
   
-  // Environment variables validation
+  // Environment variables for server-side access
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
   
   // Experimental features for better security

@@ -3,15 +3,18 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeForDatabase, logSecurityEvent } from './validation';
+import { logEnvironmentStatus } from './env-check';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Validate environment variables
+const envStatus = logEnvironmentStatus();
+if (!envStatus.isValid) {
+  throw new Error(`Missing required environment variables: ${envStatus.missing.join(', ')}`);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -24,16 +27,26 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Server-side client with service role key for admin operations
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Only create admin client if we have the service role key (server-side only)
+export const supabaseAdmin = (() => {
+  if (typeof window !== 'undefined') {
+    // Client-side, no admin client
+    return null;
+  }
+  
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    console.warn('SUPABASE_SERVICE_ROLE_KEY not found for admin client');
+    return null;
+  }
+  
+  return createClient(supabaseUrl!, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+})();
 
 // Database types
 export interface User {
@@ -64,6 +77,7 @@ export interface Cancellation {
 // Secure database operations
 export class SecureDatabase {
   private client = supabase;
+  private adminClient = supabaseAdmin;
   
   // Get user with validation
   async getUser(userId: string): Promise<User | null> {
@@ -101,7 +115,10 @@ export class SecureDatabase {
         .from('subscriptions')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         logSecurityEvent('database_error', userId, { operation: 'getSubscription', error: error.message });
@@ -218,6 +235,38 @@ export class SecureDatabase {
     } catch (err) {
       logSecurityEvent('database_exception', userId, { operation: 'getCancellation', error: err });
       return null;
+    }
+  }
+
+  // Update cancellation record
+  async updateCancellation(cancellationId: string, userId: string, updateData: Record<string, unknown>): Promise<boolean> {
+    try {
+      if (!cancellationId || !userId) {
+        throw new Error('Invalid cancellation ID or user ID');
+      }
+
+      // Sanitize input data
+      const sanitizedData = sanitizeForDatabase(updateData);
+
+      const { error } = await this.client
+        .from('cancellations')
+        .update({
+          ...sanitizedData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cancellationId)
+        .eq('user_id', userId);
+
+      if (error) {
+        logSecurityEvent('database_error', userId, { operation: 'updateCancellation', error: error.message });
+        return false;
+      }
+
+      logSecurityEvent('cancellation_updated', userId, { cancellationId });
+      return true;
+    } catch (err) {
+      logSecurityEvent('database_exception', userId, { operation: 'updateCancellation', error: err });
+      return false;
     }
   }
 }
