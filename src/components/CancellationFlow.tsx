@@ -8,6 +8,9 @@ import VisaOfferStep from './VisaOfferStep';
 import DownsellOfferStep from './DownsellOfferStep';
 import CompletionStep from './CompletionStep';
 import YesLawyerCompletionStep from './YesLawyerCompletionStep';
+import JobSearchDownsellStep from './JobSearchDownsellStep';
+import SubscriptionContinuedStep from './SubscriptionContinuedStep';
+import JobSearchSurveyStep from './JobSearchSurveyStep';
 
 interface CancellationFlowProps {
   isOpen: boolean;
@@ -15,7 +18,7 @@ interface CancellationFlowProps {
   onJobFoundResponse: (foundJob: boolean) => void;
 }
 
-type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion';
+type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion' | 'job-search-downsell' | 'subscription-continued' | 'job-search-survey';
 
 export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }: CancellationFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('initial');
@@ -36,8 +39,8 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       // If they found a job, go to congrats survey first
       setCurrentStep('survey');
     } else {
-      // If they didn't find a job, go directly to feedback
-      setCurrentStep('feedback');
+      // If they didn't find a job, show the downsell offer first
+      setCurrentStep('job-search-downsell');
     }
   };
 
@@ -101,6 +104,68 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     // Complete the cancellation flow
     onJobFoundResponse(true);
   };
+
+  const handleJobSearchDownsellAccept = () => {
+    // User accepted the downsell offer, show subscription continued screen
+    setCurrentStep('subscription-continued');
+  };
+
+  const handleJobSearchDownsellDecline = () => {
+    // User declined the downsell offer, go to survey step
+    setCurrentStep('job-search-survey');
+  };
+
+  const handleSubscriptionContinuedFinish = () => {
+    // User completed the subscription continuation, go to survey step
+    setCurrentStep('job-search-survey');
+  };
+
+  const handleJobSearchSurveyAcceptOffer = () => {
+    // User accepted 50% off from survey, go to subscription continued
+    setCurrentStep('subscription-continued');
+  };
+
+  const handleJobSearchSurveyComplete = () => {
+    // User completed the survey without accepting offer, complete cancellation
+    onJobFoundResponse(false);
+  };
+
+  // Show job search survey step
+  if (currentStep === 'job-search-survey') {
+    return (
+      <JobSearchSurveyStep
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setCurrentStep('job-search-downsell')}
+        onAcceptOffer={handleJobSearchSurveyAcceptOffer}
+        onComplete={handleJobSearchSurveyComplete}
+      />
+    );
+  }
+
+  // Show subscription continued step
+  if (currentStep === 'subscription-continued') {
+    return (
+      <SubscriptionContinuedStep
+        isOpen={true}
+        onClose={onClose}
+        onFinish={handleSubscriptionContinuedFinish}
+      />
+    );
+  }
+
+  // Show job search downsell step
+  if (currentStep === 'job-search-downsell') {
+    return (
+      <JobSearchDownsellStep
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setCurrentStep('initial')}
+        onAcceptOffer={handleJobSearchDownsellAccept}
+        onDeclineOffer={handleJobSearchDownsellDecline}
+      />
+    );
+  }
 
   // Show yes-lawyer completion step
   if (currentStep === 'yes-lawyer-completion') {
