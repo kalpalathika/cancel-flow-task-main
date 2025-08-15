@@ -37,12 +37,10 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
   };
 
   const OptionButton = ({ 
-    value, 
     isSelected, 
     onClick, 
     children 
   }: { 
-    value: string; 
     isSelected: boolean; 
     onClick: () => void; 
     children: React.ReactNode;
@@ -132,7 +130,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
               {['0', '1 - 5', '6 - 20', '20+'].map((option) => (
                 <OptionButton
                   key={option}
-                  value={option}
                   isSelected={responses.rolesApplied === option}
                   onClick={() => setResponses(prev => ({ ...prev, rolesApplied: option }))}
                 >
@@ -151,7 +148,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
               {['0', '1-5', '6-20', '20+'].map((option) => (
                 <OptionButton
                   key={option}
-                  value={option}
                   isSelected={responses.companiesEmailed === option}
                   onClick={() => setResponses(prev => ({ ...prev, companiesEmailed: option }))}
                 >
@@ -170,7 +166,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
               {['0', '1-2', '3-5', '5+'].map((option) => (
                 <OptionButton
                   key={option}
-                  value={option}
                   isSelected={responses.companiesInterviewed === option}
                   onClick={() => setResponses(prev => ({ ...prev, companiesInterviewed: option }))}
                 >
@@ -250,7 +245,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
                 {['0', '1 - 5', '6 - 20', '20+'].map((option) => (
                   <OptionButton
                     key={option}
-                    value={option}
                     isSelected={responses.rolesApplied === option}
                     onClick={() => setResponses(prev => ({ ...prev, rolesApplied: option }))}
                   >
@@ -269,7 +263,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
                 {['0', '1-5', '6-20', '20+'].map((option) => (
                   <OptionButton
                     key={option}
-                    value={option}
                     isSelected={responses.companiesEmailed === option}
                     onClick={() => setResponses(prev => ({ ...prev, companiesEmailed: option }))}
                   >
@@ -288,7 +281,6 @@ export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: 
                 {['0', '1-2', '3-5', '5+'].map((option) => (
                   <OptionButton
                     key={option}
-                    value={option}
                     isSelected={responses.companiesInterviewed === option}
                     onClick={() => setResponses(prev => ({ ...prev, companiesInterviewed: option }))}
                   >

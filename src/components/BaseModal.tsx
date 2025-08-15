@@ -25,18 +25,38 @@ export default function BaseModal({
 }: BaseModalProps) {
   if (!isOpen) return null;
 
-  const ProgressBar = () => (
-    <div className="flex items-center gap-3">
-      <div className="flex gap-1">
-        <div className={`h-2 w-6 rounded-full ${progress && progress >= 1 ? 'bg-[#4abf71]' : 'bg-[#e6e6e6]'}`} />
-        <div className={`h-2 w-6 rounded-full ${progress && progress >= 2 ? 'bg-[#4abf71]' : progress === 2 ? 'bg-[#b5b3af]' : 'bg-[#e6e6e6]'}`} />
-        <div className={`h-2 w-6 rounded-full ${progress && progress >= 3 ? 'bg-[#4abf71]' : 'bg-[#e6e6e6]'}`} />
+  const ProgressBar = () => {
+    // Determine max steps from step text (e.g., "Step 3 of 4")
+    const maxSteps = step ? parseInt(step.split(' of ')[1]) || 3 : 3;
+    const currentStepNum = progress || 1;
+    
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex gap-1">
+          {Array.from({ length: maxSteps }, (_, i) => {
+            const stepIndex = i + 1;
+            let bgColor = 'bg-[#e6e6e6]'; // default
+            
+            if (stepIndex < currentStepNum) {
+              bgColor = 'bg-[#4abf71]'; // completed
+            } else if (stepIndex === currentStepNum) {
+              bgColor = 'bg-[#b5b3af]'; // current
+            }
+            
+            return (
+              <div
+                key={i}
+                className={`h-2 w-6 rounded-full ${bgColor}`}
+              />
+            );
+          })}
+        </div>
+        {step && (
+          <span className="text-xs lg:text-sm text-[#62605c] font-normal">{step}</span>
+        )}
       </div>
-      {step && (
-        <span className="text-xs lg:text-sm text-[#62605c] font-normal">{step}</span>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

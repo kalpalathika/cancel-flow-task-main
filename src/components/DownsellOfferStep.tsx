@@ -1,0 +1,304 @@
+'use client';
+
+import { useState } from 'react';
+import BaseModal from './BaseModal';
+
+interface DownsellOfferStepProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onBack: () => void;
+  onComplete: (hasLawyer: boolean, visaType?: string) => void;
+}
+
+export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete }: DownsellOfferStepProps) {
+  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(null);
+  const [visaType, setVisaType] = useState('');
+
+  const handleSubmit = () => {
+    if (selectedOption && (selectedOption === 'yes' || visaType.trim())) {
+      onComplete(selectedOption === 'yes', visaType.trim() || undefined);
+    }
+  };
+
+  const isValid = selectedOption !== null && (selectedOption === 'yes' || visaType.trim().length > 0);
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      onBack={onBack}
+      title="Subscription Cancellation"
+      step="Step 3 of 3"
+      progress={3}
+      showImage={true}
+    >
+      {/* Desktop Content */}
+      <div className="hidden md:flex flex-col gap-4 lg:gap-6">
+        {/* Main Heading */}
+        <div className="flex flex-col gap-3 lg:gap-4">
+          <div className="flex flex-col gap-3 lg:gap-4">
+            <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold text-[#41403d] leading-tight">
+              <span className="block mb-0">You landed the job!</span>
+              <span className="block italic">That&apos;s what we live for.</span>
+            </h1>
+          </div>
+          
+          {/* Sub-heading */}
+          <div className="flex flex-col gap-3 lg:gap-4">
+            <h2 className="text-lg lg:text-xl font-semibold text-[#41403d] leading-normal">
+              <span className="block mb-0">Even if it wasn&apos;t through Migrate Mate,</span>
+              <span className="block">let us help get your visa sorted.</span>
+            </h2>
+          </div>
+        </div>
+        
+        {/* Question */}
+        <div className="flex flex-col gap-3 lg:gap-4">
+          <p className="text-sm lg:text-base font-semibold text-[#62605c] leading-relaxed">
+            Is your company providing an immigration lawyer to help with your visa?
+          </p>
+        </div>
+        
+        {/* Radio Options */}
+        <div className="flex flex-col gap-3 lg:gap-4 w-full">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="radio"
+              name="hasLawyer"
+              value="yes"
+              checked={selectedOption === 'yes'}
+              onChange={() => setSelectedOption('yes')}
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+              selectedOption === 'yes' 
+                ? 'border-[#4abf71] bg-[#4abf71]' 
+                : 'border-[#62605c] group-hover:border-[#4abf71]'
+            }`}>
+              {selectedOption === 'yes' && (
+                <div className="w-2 h-2 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm lg:text-base font-medium text-[#62605c] group-hover:text-[#41403d] transition-colors">
+              Yes
+            </span>
+          </label>
+          
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <input
+              type="radio"
+              name="hasLawyer"
+              value="no"
+              checked={selectedOption === 'no'}
+              onChange={() => setSelectedOption('no')}
+              className="sr-only"
+            />
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+              selectedOption === 'no' 
+                ? 'border-[#4abf71] bg-[#4abf71]' 
+                : 'border-[#62605c] group-hover:border-[#4abf71]'
+            }`}>
+              {selectedOption === 'no' && (
+                <div className="w-2 h-2 bg-white rounded-full" />
+              )}
+            </div>
+            <span className="text-sm lg:text-base font-medium text-[#62605c] group-hover:text-[#41403d] transition-colors">
+              No
+            </span>
+          </label>
+        </div>
+
+        {/* Follow-up Questions */}
+        {selectedOption === 'yes' && (
+          <div className="flex flex-col gap-3 lg:gap-4 w-full">
+            <p className="text-sm lg:text-base font-normal text-[#41403d] leading-relaxed">
+              What visa will you be applying for?*
+            </p>
+            <input
+              type="text"
+              value={visaType}
+              onChange={(e) => setVisaType(e.target.value)}
+              placeholder="Enter visa type..."
+              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+            />
+          </div>
+        )}
+
+        {selectedOption === 'no' && (
+          <div className="flex flex-col gap-3 lg:gap-4 w-full">
+            <p className="text-sm lg:text-base font-normal text-[#41403d] leading-relaxed">
+              We can connect you with one of our trusted partners. Which visa would you like to apply for?*
+            </p>
+            <input
+              type="text"
+              value={visaType}
+              onChange={(e) => setVisaType(e.target.value)}
+              placeholder="Enter visa type..."
+              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+            />
+          </div>
+        )}
+        
+        {/* Divider line */}
+        <div className="w-full h-px bg-gray-200" />
+        
+        {/* Complete Button */}
+        <div className="flex flex-col gap-3 lg:gap-4 w-full">
+          <button
+            onClick={handleSubmit}
+            disabled={!isValid}
+            className={`h-10 lg:h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
+              isValid 
+                ? 'bg-[#4abf71] text-white hover:bg-[#3ea863]' 
+                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
+            }`}
+          >
+            <span className="text-sm lg:text-base font-semibold">
+              Complete cancellation
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Content */}
+      <div className="md:hidden flex flex-col h-full">
+        {/* Back button for mobile */}
+        <div className="p-4 pb-0">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[#62605c] hover:opacity-70 transition-opacity"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-xs font-semibold">Back</span>
+          </button>
+        </div>
+
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          {/* Content */}
+          <div className="flex flex-col gap-4 sm:gap-6">
+            {/* Main Heading */}
+            <div className="flex flex-col gap-3 sm:gap-4">
+              <h1 className="text-xl sm:text-2xl font-semibold text-[#41403d] leading-tight">
+                <span className="block mb-2">You landed the job!</span>
+                <span className="block italic">That&apos;s what we live for.</span>
+              </h1>
+              
+              {/* Sub-heading */}
+              <h2 className="text-base sm:text-lg font-semibold text-[#41403d] leading-normal">
+                Even if it wasn&apos;t through MigrateMate, let us help get your{' '}
+                <span className="underline">visa</span> sorted.
+              </h2>
+              
+              {/* Divider line for mobile */}
+              <div className="w-full h-px bg-gray-200" />
+            </div>
+            
+            {/* Question */}
+            <p className="text-sm sm:text-base font-semibold text-[#41403d] leading-relaxed">
+              Is your company providing an immigration lawyer to help with your visa?*
+            </p>
+            
+            {/* Radio Options */}
+            <div className="flex flex-col gap-2 sm:gap-3 w-full">
+              <label className="flex items-center gap-3 cursor-pointer group py-2">
+                <input
+                  type="radio"
+                  name="hasLawyer"
+                  value="yes"
+                  checked={selectedOption === 'yes'}
+                  onChange={() => setSelectedOption('yes')}
+                  className="sr-only"
+                />
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  selectedOption === 'yes' 
+                    ? 'border-[#4abf71] bg-[#4abf71]' 
+                    : 'border-[#62605c] group-hover:border-[#4abf71]'
+                }`}>
+                  {selectedOption === 'yes' && (
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  )}
+                </div>
+                <span className="text-sm font-medium text-[#62605c] group-hover:text-[#41403d] transition-colors">
+                  Yes
+                </span>
+              </label>
+              
+              <label className="flex items-center gap-3 cursor-pointer group py-2">
+                <input
+                  type="radio"
+                  name="hasLawyer"
+                  value="no"
+                  checked={selectedOption === 'no'}
+                  onChange={() => setSelectedOption('no')}
+                  className="sr-only"
+                />
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  selectedOption === 'no' 
+                    ? 'border-[#4abf71] bg-[#4abf71]' 
+                    : 'border-[#62605c] group-hover:border-[#4abf71]'
+                }`}>
+                  {selectedOption === 'no' && (
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  )}
+                </div>
+                <span className="text-sm font-medium text-[#62605c] group-hover:text-[#41403d] transition-colors">
+                  No
+                </span>
+              </label>
+            </div>
+
+            {/* Follow-up Questions for Mobile */}
+            {selectedOption === 'yes' && (
+              <div className="flex flex-col gap-3 w-full mt-4">
+                <p className="text-sm sm:text-base font-normal text-[#41403d] leading-relaxed">
+                  What visa will you be applying for?*
+                </p>
+                <input
+                  type="text"
+                  value={visaType}
+                  onChange={(e) => setVisaType(e.target.value)}
+                  placeholder="Enter visa type..."
+                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                />
+              </div>
+            )}
+
+            {selectedOption === 'no' && (
+              <div className="flex flex-col gap-3 w-full mt-4">
+                <p className="text-sm sm:text-base font-normal text-[#41403d] leading-relaxed">
+                  We can connect you with one of our trusted partners. Which visa would you like to apply for?*
+                </p>
+                <input
+                  type="text"
+                  value={visaType}
+                  onChange={(e) => setVisaType(e.target.value)}
+                  placeholder="Enter visa type..."
+                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Complete Button - Fixed at bottom with safe area */}
+        <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
+          <button
+            onClick={handleSubmit}
+            disabled={!isValid}
+            className={`h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
+              isValid 
+                ? 'bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558]' 
+                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
+            }`}
+          >
+            <span className="text-base font-semibold">
+              Complete cancellation
+            </span>
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}

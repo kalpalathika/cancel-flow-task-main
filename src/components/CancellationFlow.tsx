@@ -4,6 +4,10 @@ import { useState } from 'react';
 import BaseModal from './BaseModal';
 import CongratsSurvey from './CongratsSurvey';
 import FeedbackStep from './FeedbackStep';
+import VisaOfferStep from './VisaOfferStep';
+import DownsellOfferStep from './DownsellOfferStep';
+import CompletionStep from './CompletionStep';
+import YesLawyerCompletionStep from './YesLawyerCompletionStep';
 
 interface CancellationFlowProps {
   isOpen: boolean;
@@ -11,11 +15,12 @@ interface CancellationFlowProps {
   onJobFoundResponse: (foundJob: boolean) => void;
 }
 
-type FlowStep = 'initial' | 'feedback' | 'survey';
+type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion';
 
 export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }: CancellationFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('initial');
   const [userFoundJob, setUserFoundJob] = useState<boolean>(false);
+  const [foundWithMigrateMate, setFoundWithMigrateMate] = useState<boolean>(false);
 
   if (!isOpen) {
     // Reset flow when modal closes
@@ -38,7 +43,10 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
 
   const handleSurveyComplete = (responses: Record<string, unknown>) => {
     console.log('Survey responses:', responses);
-    // After congrats survey, go to feedback step
+    const foundJobWithMM = responses.foundWithMigrateMate as boolean;
+    setFoundWithMigrateMate(foundJobWithMM);
+    
+    // Always go to feedback step after survey, regardless of MM response
     setCurrentStep('feedback');
   };
 
@@ -48,13 +56,97 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
 
   const handleFeedbackSubmit = (feedback: string) => {
     console.log('Feedback submitted:', feedback);
-    // Complete the cancellation flow
-    onJobFoundResponse(false);
+    
+    // Check if they found job with Migrate Mate from survey
+    if (userFoundJob && foundWithMigrateMate) {
+      // If yes, go to visa offer step
+      setCurrentStep('visa-offer');
+    } else if (userFoundJob && !foundWithMigrateMate) {
+      // If they found job but NOT with Migrate Mate, go to downsell offer
+      setCurrentStep('downsell-offer');
+    } else {
+      // If they didn't find a job, complete the cancellation flow
+      onJobFoundResponse(false);
+    }
   };
 
-  const handleBackToSurvey = () => {
-    setCurrentStep('survey');
+  const handleVisaOfferComplete = (hasLawyer: boolean, visaType?: string) => {
+    console.log('Visa offer response:', hasLawyer, 'Visa type:', visaType);
+    // If they have a lawyer (Yes), show yes-lawyer completion screen
+    if (hasLawyer) {
+      setCurrentStep('yes-lawyer-completion');
+    } else {
+      // If they don't have a lawyer (No), show regular completion screen
+      setCurrentStep('completion');
+    }
   };
+
+  const handleDownsellOfferComplete = (hasLawyer: boolean, visaType?: string) => {
+    console.log('Downsell offer response:', hasLawyer, 'Visa type:', visaType);
+    // If they have a lawyer (Yes), show yes-lawyer completion screen
+    if (hasLawyer) {
+      setCurrentStep('yes-lawyer-completion');
+    } else {
+      // If they don't have a lawyer (No), show regular completion screen
+      setCurrentStep('completion');
+    }
+  };
+
+  const handleCompletionFinish = () => {
+    // Complete the cancellation flow
+    onJobFoundResponse(true);
+  };
+
+  const handleYesLawyerCompletionFinish = () => {
+    // Complete the cancellation flow
+    onJobFoundResponse(true);
+  };
+
+  // Show yes-lawyer completion step
+  if (currentStep === 'yes-lawyer-completion') {
+    return (
+      <YesLawyerCompletionStep
+        isOpen={true}
+        onClose={onClose}
+        onFinish={handleYesLawyerCompletionFinish}
+      />
+    );
+  }
+
+  // Show completion step
+  if (currentStep === 'completion') {
+    return (
+      <CompletionStep
+        isOpen={true}
+        onClose={onClose}
+        onFinish={handleCompletionFinish}
+      />
+    );
+  }
+
+  // Show visa offer step (only if they found job with Migrate Mate)
+  if (currentStep === 'visa-offer') {
+    return (
+      <VisaOfferStep
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setCurrentStep('feedback')}
+        onComplete={handleVisaOfferComplete}
+      />
+    );
+  }
+
+  // Show downsell offer step (if they found job but NOT with Migrate Mate)
+  if (currentStep === 'downsell-offer') {
+    return (
+      <DownsellOfferStep
+        isOpen={true}
+        onClose={onClose}
+        onBack={() => setCurrentStep('feedback')}
+        onComplete={handleDownsellOfferComplete}
+      />
+    );
+  }
 
   // Show feedback step
   if (currentStep === 'feedback') {
@@ -68,14 +160,36 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       }
     };
 
+    // Determine step number based on flow
+    let stepNumber: number;
+    let stepText: string;
+    
+    if (userFoundJob && foundWithMigrateMate) {
+      // Path: Initial → Survey → Feedback → Visa Offer (step 3 of 4) 
+      stepNumber = 3;
+      stepText = "Step 3 of 4";
+    } else if (userFoundJob && !foundWithMigrateMate) {
+      // Path: Initial → Survey → Feedback → Downsell Offer (step 3 of 4)
+      stepNumber = 3;
+      stepText = "Step 3 of 4";
+    } else if (userFoundJob) {
+      // Path: Initial → Survey → Feedback (step 3 of 3) - fallback
+      stepNumber = 3;
+      stepText = "Step 3 of 3";
+    } else {
+      // Path: Initial → Feedback (step 2 of 2)
+      stepNumber = 2;
+      stepText = "Step 2 of 2";
+    }
+
     return (
       <FeedbackStep
         isOpen={true}
         onClose={onClose}
         onBack={handleFeedbackBack}
         onContinue={handleFeedbackSubmit}
-        stepNumber={userFoundJob ? 2 : 1}
-        stepText={userFoundJob ? "Step 2 of 3" : "Step 2 of 3"}
+        stepNumber={stepNumber}
+        stepText={stepText}
       />
     );
   }
