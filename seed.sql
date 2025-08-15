@@ -37,21 +37,51 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cancellations ENABLE ROW LEVEL SECURITY;
 
--- Basic RLS policies (candidates should enhance these)
+-- Enhanced RLS policies for security
 CREATE POLICY "Users can view own data" ON users
   FOR SELECT USING (auth.uid() = id);
 
+CREATE POLICY "Users can update own data" ON users
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- Subscription policies
 CREATE POLICY "Users can view own subscriptions" ON subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can update own subscriptions" ON subscriptions
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (auth.uid() = user_id)
+  WITH CHECK (
+    auth.uid() = user_id AND
+    status IN ('active', 'pending_cancellation', 'cancelled')
+  );
 
+-- Cancellation policies with enhanced security
 CREATE POLICY "Users can insert own cancellations" ON cancellations
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id AND
+    downsell_variant IN ('A', 'B') AND
+    (reason IS NULL OR length(reason) <= 500) AND
+    accepted_downsell IS NOT NULL
+  );
 
 CREATE POLICY "Users can view own cancellations" ON cancellations
   FOR SELECT USING (auth.uid() = user_id);
+
+-- Prevent unauthorized updates to cancellations (immutable once created)
+CREATE POLICY "No updates to cancellations" ON cancellations
+  FOR UPDATE USING (false);
+
+-- Prevent deletion of cancellations for audit trail
+CREATE POLICY "No deletion of cancellations" ON cancellations
+  FOR DELETE USING (false);
+
+-- Additional security policies
+CREATE POLICY "No deletion of users" ON users
+  FOR DELETE USING (false);
+
+CREATE POLICY "No deletion of subscriptions" ON subscriptions  
+  FOR DELETE USING (false);
 
 -- Seed data
 INSERT INTO users (id, email) VALUES

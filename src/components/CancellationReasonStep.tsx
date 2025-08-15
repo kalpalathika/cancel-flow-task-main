@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import BaseModal from './BaseModal';
+import { validateCancellationReason, logSecurityEvent } from '../lib/validation';
 
 interface CancellationReasonStepProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function CancellationReasonStep({
   const [priceInput, setPriceInput] = useState('');
   const [textFeedback, setTextFeedback] = useState('');
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [error, setError] = useState('');
 
   const showWarning = !selectedReason && hasAttemptedSubmit;
   const showPriceInput = selectedReason === 'too-expensive';
@@ -52,10 +54,33 @@ export default function CancellationReasonStep({
 
   const handleContinue = () => {
     setHasAttemptedSubmit(true);
-    if (canComplete) {
-      onComplete();
+    if (canComplete && selectedReason) {
+      try {
+        const reasonMap: Record<CancellationReason, string> = {
+          'too-expensive': 'Too expensive',
+          'platform-not-helpful': 'Platform not helpful', 
+          'not-enough-jobs': 'Not enough relevant jobs',
+          'decided-not-to-move': 'Decided not to move',
+          'other': 'Other'
+        };
+        
+        const details = showTextArea ? textFeedback : (showPriceInput ? priceInput : undefined);
+        validateCancellationReason(reasonMap[selectedReason], details);
+        
+        setError('');
+        onComplete();
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Invalid input';
+        setError(errorMessage);
+        logSecurityEvent('cancellation_reason_validation_failed', undefined, { 
+          error: errorMessage, 
+          reason: selectedReason,
+          detailsLength: textFeedback.length 
+        });
+      }
     }
   };
+
 
   const radioOptions = [
     { id: 'too-expensive', label: 'Too expensive' },
@@ -88,11 +113,18 @@ export default function CancellationReasonStep({
         </div>
 
         {/* Warning message */}
-        {showWarning && (
+        {(showWarning || error) && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm lg:text-base font-normal text-red-600 leading-relaxed">
-              To help us understand your experience, please select a reason for cancelling*
-            </p>
+            {showWarning && (
+              <p className="text-sm lg:text-base font-normal text-red-600 leading-relaxed">
+                To help us understand your experience, please select a reason for cancelling*
+              </p>
+            )}
+            {error && (
+              <p className="text-sm lg:text-base font-normal text-red-600 leading-relaxed">
+                {error}
+              </p>
+            )}
           </div>
         )}
 
@@ -141,9 +173,18 @@ export default function CancellationReasonStep({
                     <input
                       type="text"
                       value={priceInput}
-                      onChange={(e) => setPriceInput(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value.length <= 50) {
+                          setPriceInput(value);
+                          if (error) setError('');
+                        }
+                      }}
                       placeholder=""
-                      className="w-full h-10 lg:h-12 pl-8 pr-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+                      maxLength={50}
+                      className={`w-full h-10 lg:h-12 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base ${
+                        error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
+                      }`}
                     />
                   </div>
                 </div>
@@ -162,10 +203,19 @@ export default function CancellationReasonStep({
                   )}
                   <textarea
                     value={textFeedback}
-                    onChange={(e) => setTextFeedback(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.length <= 500) {
+                        setTextFeedback(value);
+                        if (error) setError('');
+                      }
+                    }}
                     placeholder=""
                     rows={4}
-                    className="w-full p-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base resize-none"
+                    maxLength={500}
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base resize-none ${
+                      error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
+                    }`}
                   />
                   <p className="text-xs text-[#62605c]">
                     Min 25 characters ({textFeedback.length}/25)

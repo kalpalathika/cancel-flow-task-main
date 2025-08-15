@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import BaseModal from './BaseModal';
+import { validateFeedback, logSecurityEvent } from '../lib/validation';
 
 interface FeedbackStepProps {
   isOpen: boolean;
@@ -14,14 +15,30 @@ interface FeedbackStepProps {
 
 export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, stepNumber = 2, stepText = "Step 2 of 3" }: FeedbackStepProps) {
   const [feedback, setFeedback] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = () => {
-    if (feedback.length >= 25) {
-      onContinue(feedback);
+    try {
+      const validatedFeedback = validateFeedback(feedback);
+      setError('');
+      onContinue(validatedFeedback);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid feedback input';
+      setError(errorMessage);
+      logSecurityEvent('feedback_validation_failed', undefined, { error: errorMessage, inputLength: feedback.length });
     }
   };
 
-  const isValid = feedback.length >= 25;
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Limit input length client-side for better UX
+    if (value.length <= 2000) {
+      setFeedback(value);
+      if (error) setError(''); // Clear error when user starts typing
+    }
+  };
+
+  const isValid = feedback.length >= 25 && feedback.length <= 2000;
   const characterCount = feedback.length;
 
   return (
@@ -52,13 +69,22 @@ export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, step
         <div className="w-full">
           <textarea
             value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Share your thoughts..."
-            className="w-full h-32 lg:h-40 p-3 border border-[#62605c] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+            className={`w-full h-32 lg:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base ${
+              error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
+            }`}
+            maxLength={2000}
+            aria-describedby="feedback-help"
           />
-          <div className="flex justify-end mt-2">
-            <span className="text-xs text-[#62605c]">
-              Min 25 characters ({characterCount}/25)
+          <div className="flex justify-between items-center mt-2">
+            {error && (
+              <span className="text-xs text-red-500">
+                {error}
+              </span>
+            )}
+            <span className={`text-xs ml-auto ${characterCount >= 25 ? 'text-green-600' : 'text-[#62605c]'}`}>
+              Min 25 characters ({characterCount}/2000)
             </span>
           </div>
         </div>
@@ -121,13 +147,22 @@ export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, step
             <div className="w-full">
               <textarea
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+                onChange={handleInputChange}
                 placeholder="Share your thoughts..."
-                className="w-full h-32 sm:h-40 p-3 border border-[#62605c] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                className={`w-full h-32 sm:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${
+                  error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
+                }`}
+                maxLength={2000}
+                aria-describedby="feedback-help"
               />
-              <div className="flex justify-end mt-2">
-                <span className="text-xs text-[#62605c]">
-                  Min 25 characters ({characterCount}/25)
+              <div className="flex justify-between items-center mt-2">
+                {error && (
+                  <span className="text-xs text-red-500">
+                    {error}
+                  </span>
+                )}
+                <span className={`text-xs ml-auto ${characterCount >= 25 ? 'text-green-600' : 'text-[#62605c]'}`}>
+                  Min 25 characters ({characterCount}/2000)
                 </span>
               </div>
             </div>
