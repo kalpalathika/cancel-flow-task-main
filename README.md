@@ -88,5 +88,6 @@ To move towards production readiness, the following items are planned for the fu
 
 These enhancements are not implemented yet — they are planned for future iterations to make the codebase fully production-ready.
 
+![Demo](media/migrateMateDemo.mov)
 
 
