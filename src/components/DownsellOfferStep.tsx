@@ -119,7 +119,7 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete 
               value={visaType}
               onChange={(e) => setVisaType(e.target.value)}
               placeholder="Enter visa type..."
-              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base text-gray-900 placeholder:text-gray-500"
             />
           </div>
         )}
@@ -134,7 +134,7 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete 
               value={visaType}
               onChange={(e) => setVisaType(e.target.value)}
               placeholder="Enter visa type..."
-              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base"
+              className="w-full h-10 lg:h-12 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm lg:text-base text-gray-900 placeholder:text-gray-500"
             />
           </div>
         )}
@@ -260,7 +260,7 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete 
                   value={visaType}
                   onChange={(e) => setVisaType(e.target.value)}
                   placeholder="Enter visa type..."
-                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm text-gray-900 placeholder:text-gray-500"
                 />
               </div>
             )}
@@ -275,7 +275,7 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete 
                   value={visaType}
                   onChange={(e) => setVisaType(e.target.value)}
                   placeholder="Enter visa type..."
-                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                  className="w-full h-10 px-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm text-gray-900 placeholder:text-gray-500"
                 />
               </div>
             )}

@@ -1,37 +1,20 @@
+
+
+
 // src/lib/supabase.ts
 // Supabase client configuration with security enhancements
 
 import { createClient } from '@supabase/supabase-js';
 import { sanitizeForDatabase, logSecurityEvent } from './validation';
-import { logEnvironmentStatus } from './env-check';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug environment variables
-console.log('Supabase client initialization:', {
-  hasUrl: !!supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  urlPreview: supabaseUrl?.substring(0, 30) + '...',
-  isClient: typeof window !== 'undefined'
-});
-
-// Validate environment variables (only on server-side or when variables are available)
-if (supabaseUrl && supabaseAnonKey) {
-  // Environment variables are available, proceed normally
-  if (typeof window === 'undefined') {
-    // Server-side: log validation status
-    logEnvironmentStatus();
-  }
-} else {
-  // Missing environment variables
-  if (typeof window === 'undefined') {
-    // Server-side: this is a real error
-    const envStatus = logEnvironmentStatus();
-    throw new Error(`Missing required environment variables: ${envStatus.missing.join(', ')}`);
-  } else {
-    // Client-side: this should not happen if Next.js is working properly
-    console.error('🔥 Environment variables missing on client-side - this indicates a Next.js configuration issue');
+// Only validate on server-side or when we actually have the variables
+if (typeof window === 'undefined') {
+  // Server-side: strict validation
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing required Supabase environment variables');
   }
 }
 

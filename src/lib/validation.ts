@@ -102,9 +102,20 @@ export function validateCancellationReason(reason: string, details?: string): { 
   
   if (details) {
     const sanitizedDetails = sanitizeString(details, 500);
-    if (sanitizedDetails.length < 25) {
-      throw new Error('Reason details must be at least 25 characters long');
+    
+    // For "Too expensive", details should be a price (number), not require 25 characters
+    if (reason === 'Too expensive') {
+      // For price input, just check that it's not empty and is a reasonable value
+      if (!sanitizedDetails.trim()) {
+        throw new Error('Price is required');
+      }
+    } else {
+      // For other reasons, require detailed feedback
+      if (sanitizedDetails.length < 25) {
+        throw new Error('Reason details must be at least 25 characters long');
+      }
     }
+    
     result.details = sanitizedDetails;
   }
   

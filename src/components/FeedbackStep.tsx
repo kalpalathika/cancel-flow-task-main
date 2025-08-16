@@ -71,7 +71,7 @@ export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, step
             value={feedback}
             onChange={handleInputChange}
             placeholder="Share your thoughts..."
-            className={`w-full h-32 lg:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base ${
+            className={`w-full h-32 lg:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base text-gray-900 placeholder:text-gray-500 ${
               error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
             }`}
             maxLength={2000}
@@ -149,7 +149,7 @@ export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, step
                 value={feedback}
                 onChange={handleInputChange}
                 placeholder="Share your thoughts..."
-                className={`w-full h-32 sm:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${
+                className={`w-full h-32 sm:h-40 p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm text-gray-900 placeholder:text-gray-500 ${
                   error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
                 }`}
                 maxLength={2000}

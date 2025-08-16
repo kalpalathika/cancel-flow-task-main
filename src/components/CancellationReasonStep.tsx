@@ -182,7 +182,7 @@ export default function CancellationReasonStep({
                       }}
                       placeholder=""
                       maxLength={50}
-                      className={`w-full h-10 lg:h-12 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base ${
+                      className={`w-full h-10 lg:h-12 pl-8 pr-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base text-gray-900 placeholder:text-gray-500 ${
                         error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
                       }`}
                     />
@@ -213,7 +213,7 @@ export default function CancellationReasonStep({
                     placeholder=""
                     rows={4}
                     maxLength={500}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base resize-none ${
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent text-sm lg:text-base resize-none text-gray-900 placeholder:text-gray-500 ${
                       error ? 'border-red-500 focus:ring-red-500' : 'border-[#62605c] focus:ring-[#4abf71]'
                     }`}
                   />
@@ -337,7 +337,7 @@ export default function CancellationReasonStep({
                         value={priceInput}
                         onChange={(e) => setPriceInput(e.target.value)}
                         placeholder=""
-                        className="w-full h-10 pl-8 pr-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm"
+                        className="w-full h-10 pl-8 pr-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm text-gray-900 placeholder:text-gray-500"
                       />
                     </div>
                   </div>
@@ -359,7 +359,7 @@ export default function CancellationReasonStep({
                       onChange={(e) => setTextFeedback(e.target.value)}
                       placeholder=""
                       rows={4}
-                      className="w-full p-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm resize-none"
+                      className="w-full p-3 border border-[#62605c] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4abf71] focus:border-transparent text-sm resize-none text-gray-900 placeholder:text-gray-500"
                     />
                     <p className="text-xs text-[#62605c]">
                       Min 25 characters ({textFeedback.length}/25)

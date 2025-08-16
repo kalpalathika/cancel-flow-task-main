@@ -33,20 +33,22 @@ export class CancellationService {
         throw new Error('No active subscription found for user');
       }
 
-      // Assign A/B testing variant
-      const variant = await getOrAssignVariant(userId);
-
       // Check if user already has an active cancellation session
       const existingCancellation = await secureDb.getCancellation(userId);
+
+      // Assign A/B testing variant (pass existing cancellation to avoid duplicate DB call)
+      const variant = await getOrAssignVariant(userId, existingCancellation);
       
       if (existingCancellation && !existingCancellation.final_outcome) {
-        // Return existing session if not completed
+        // Return existing session but always start from 'initial' step
+        // This ensures users always see the "Have you found a job yet?" screen
+        // while preserving their previous data for restoration
         const session: CancellationSession = {
           id: existingCancellation.id,
           userId,
           subscriptionId: subscription.id,
           variant: existingCancellation.downsell_variant,
-          currentStep: (existingCancellation.cancellation_step as CancellationStep) || 'initial',
+          currentStep: 'initial', // Always start from initial step
           jobFound: existingCancellation.job_found,
           foundWithMigrateMate: existingCancellation.found_with_migrate_mate,
           feedbackText: existingCancellation.feedback_text || undefined,
@@ -61,7 +63,8 @@ export class CancellationService {
         logSecurityEvent('cancellation_session_resumed', userId, { 
           sessionId: session.id,
           variant,
-          currentStep: session.currentStep 
+          currentStep: 'initial', // Always log as starting from initial
+          previousStep: existingCancellation.cancellation_step // Track where they were before
         });
 
         return { success: true, data: session };

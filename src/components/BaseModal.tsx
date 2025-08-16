@@ -121,14 +121,9 @@ export default function BaseModal({
           
           {/* Content */}
           <div className="flex flex-col lg:flex-row p-4 lg:p-6 gap-4 lg:gap-6">
-            {/* Main content */}
-            <div className="flex-1">
-              {children}
-            </div>
-            
-            {/* Side image */}
+            {/* Side image - moved before content for proper column order */}
             {showImage && (
-              <div className="w-full lg:w-80 xl:w-96 h-64 lg:h-auto">
+              <div className="w-full lg:w-80 xl:w-96 h-64 lg:h-auto lg:order-2">
                 <div className="w-full h-full relative rounded-xl overflow-hidden shadow-lg">
                   <img 
                     src="/skyline.png" 
@@ -140,6 +135,11 @@ export default function BaseModal({
                 </div>
               </div>
             )}
+            
+            {/* Main content */}
+            <div className="flex-1 lg:order-1">
+              {children}
+            </div>
           </div>
         </div>
       </div>

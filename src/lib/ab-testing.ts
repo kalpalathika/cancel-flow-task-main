@@ -76,22 +76,25 @@ async function assignVariant(userId: string): Promise<DownsellVariant> {
  * Get existing variant from database or assign new one
  * Ensures consistency across sessions for the same user
  */
-export async function getOrAssignVariant(userId: string): Promise<DownsellVariant> {
+export async function getOrAssignVariant(
+  userId: string, 
+  existingCancellation?: any
+): Promise<DownsellVariant> {
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('Invalid user ID');
     }
 
-    // Check if user already has a variant assigned in any previous cancellation
-    const existingCancellation = await secureDb.getCancellation(userId);
+    // Use provided cancellation data or fetch from database
+    const cancellation = existingCancellation ?? await secureDb.getCancellation(userId);
     
-    if (existingCancellation && existingCancellation.downsell_variant) {
+    if (cancellation && cancellation.downsell_variant) {
       logSecurityEvent('ab_variant_retrieved', userId, { 
-        variant: existingCancellation.downsell_variant,
-        source: 'existing_cancellation' 
+        variant: cancellation.downsell_variant,
+        source: existingCancellation ? 'provided_data' : 'existing_cancellation' 
       });
       
-      return existingCancellation.downsell_variant;
+      return cancellation.downsell_variant;
     }
 
     // No existing variant found, assign new one

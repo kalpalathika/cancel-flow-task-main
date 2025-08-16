@@ -135,12 +135,41 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       );
     }
     
-    if (foundJob) {
-      // If they found a job, go to congrats survey first
-      setCurrentStep('survey');
+    // Check if this is a resumed session with existing data
+    if (cancellationSession?.jobFound !== undefined && cancellationSession.jobFound === foundJob) {
+      // User made the same choice as before, restore their progress
+      if (foundJob) {
+        // If they found a job and we have survey data, skip to appropriate step
+        if (cancellationSession.foundWithMigrateMate !== undefined) {
+          if (cancellationSession.feedbackText) {
+            // They've completed feedback, go to next step based on their survey response
+            if (cancellationSession.foundWithMigrateMate) {
+              setCurrentStep('visa-offer');
+            } else {
+              setCurrentStep('downsell-offer');
+            }
+          } else {
+            // They've completed survey but not feedback
+            setFoundWithMigrateMate(cancellationSession.foundWithMigrateMate);
+            setCurrentStep('feedback');
+          }
+        } else {
+          // No survey data yet, go to survey
+          setCurrentStep('survey');
+        }
+      } else {
+        // They didn't find a job, show the downsell offer
+        setCurrentStep('job-search-downsell');
+      }
     } else {
-      // If they didn't find a job, show the downsell offer first
-      setCurrentStep('job-search-downsell');
+      // New choice or different choice, follow normal flow
+      if (foundJob) {
+        // If they found a job, go to congrats survey first
+        setCurrentStep('survey');
+      } else {
+        // If they didn't find a job, show the downsell offer first
+        setCurrentStep('job-search-downsell');
+      }
     }
   };
 
@@ -575,18 +604,30 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
           <button
             onClick={() => handleJobResponse(true)}
-            className="h-10 lg:h-12 w-full rounded-lg border-2 border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center"
+            className={`h-10 lg:h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
+              userFoundJob === true
+                ? 'border-[#8952fc] bg-[#8952fc] text-white'
+                : 'border-gray-200 bg-white hover:bg-gray-50'
+            }`}
           >
-            <span className="text-sm lg:text-base font-semibold text-[#62605c]">
+            <span className={`text-sm lg:text-base font-semibold ${
+              userFoundJob === true ? 'text-white' : 'text-[#62605c]'
+            }`}>
               Yes, I&apos;ve found a job
             </span>
           </button>
           
           <button
             onClick={() => handleJobResponse(false)}
-            className="h-10 lg:h-12 w-full rounded-lg border-2 border-gray-200 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center"
+            className={`h-10 lg:h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
+              userFoundJob === false
+                ? 'border-[#8952fc] bg-[#8952fc] text-white'
+                : 'border-gray-200 bg-white hover:bg-gray-50'
+            }`}
           >
-            <span className="text-sm lg:text-base font-semibold text-[#62605c]">
+            <span className={`text-sm lg:text-base font-semibold ${
+              userFoundJob === false ? 'text-white' : 'text-[#62605c]'
+            }`}>
               Not yet - I&apos;m still looking
             </span>
           </button>
@@ -632,18 +673,30 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe flex flex-col gap-3 px-4 sm:px-6">
           <button
             onClick={() => handleJobResponse(true)}
-            className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center justify-center"
+            className={`h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
+              userFoundJob === true
+                ? 'border-[#8952fc] bg-[#8952fc] text-white'
+                : 'border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100'
+            }`}
           >
-            <span className="text-base font-semibold text-[#62605c]">
+            <span className={`text-base font-semibold ${
+              userFoundJob === true ? 'text-white' : 'text-[#62605c]'
+            }`}>
               Yes, I&apos;ve found a job
             </span>
           </button>
           
           <button
             onClick={() => handleJobResponse(false)}
-            className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center justify-center"
+            className={`h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
+              userFoundJob === false
+                ? 'border-[#8952fc] bg-[#8952fc] text-white'
+                : 'border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100'
+            }`}
           >
-            <span className="text-base font-semibold text-[#62605c]">
+            <span className={`text-base font-semibold ${
+              userFoundJob === false ? 'text-white' : 'text-[#62605c]'
+            }`}>
               Not yet - I&apos;m still looking
             </span>
           </button>
