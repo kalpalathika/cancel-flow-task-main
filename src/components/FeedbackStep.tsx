@@ -32,7 +32,6 @@ export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, step
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
-    // Limit input length client-side for better UX
     if (value.length <= 2000) {
       setFeedback(value);
       if (error) setError(''); // Clear error when user starts typing

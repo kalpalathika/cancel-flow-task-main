@@ -85,7 +85,6 @@ export default function YesLawyerCompletionStep({ isOpen, onClose, onFinish }: Y
           </div>
         </div>
         
-        {/* Finish Button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
             onClick={onFinish}

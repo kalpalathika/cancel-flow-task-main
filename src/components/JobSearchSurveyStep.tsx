@@ -284,9 +284,7 @@ export default function JobSearchSurveyStep({
           </div>
         </div>
         
-        {/* Buttons - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe flex flex-col gap-3 px-4 sm:px-6">
-          {/* Downsell offer - only show for variant B */}
           {variant === 'B' && (
             <button
               onClick={onAcceptOffer}

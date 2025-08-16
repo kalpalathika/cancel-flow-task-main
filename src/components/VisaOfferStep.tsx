@@ -263,7 +263,6 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, onC
           </div>
         </div>
         
-        {/* Complete Button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
             onClick={handleCompleteCancellation}

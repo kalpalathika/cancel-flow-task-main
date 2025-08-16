@@ -161,7 +161,6 @@ export default function JobSearchDownsellStep({
           </div>
         </div>
         
-        {/* Decline button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
             onClick={onDeclineOffer}

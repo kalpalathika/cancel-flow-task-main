@@ -124,7 +124,6 @@ export default function FinalCancellationStep({
           </div>
         </div>
         
-        {/* Back to Jobs Button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
             onClick={onBackToJobs}

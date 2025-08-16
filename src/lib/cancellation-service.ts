@@ -334,7 +334,6 @@ export class CancellationService {
     flowData?: any
   ): Promise<ServiceResponse<boolean>> {
     try {
-      // Update cancellation record with final outcome and flow data
       const updateData: any = {
         final_outcome: outcome
       };
