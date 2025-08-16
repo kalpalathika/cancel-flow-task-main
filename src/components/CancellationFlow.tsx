@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import BaseModal from './BaseModal';
 import { cancellationService } from '../lib/cancellation-service';
 import type { CancellationSession } from '../types/cancellation';
@@ -24,7 +24,6 @@ interface CancellationFlowProps {
 
 type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion' | 'job-search-downsell' | 'subscription-continued' | 'job-search-survey' | 'cancellation-reason' | 'final-cancellation';
 
-// Global state object to collect all data - persist only at the end
 interface FlowData {
   jobFound?: boolean;
   foundWithMigrateMate?: boolean;
@@ -46,20 +45,11 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   
-  // Global state object - collect all data here
   const [flowData, setFlowData] = useState<FlowData>({});
 
-  // Mock user ID - in real app this would come from auth context
   const userId = '550e8400-e29b-41d4-a716-446655440001';
 
-  // Initialize cancellation session when modal opens
-  useEffect(() => {
-    if (isOpen && !cancellationSession && !isLoading && !error) {
-      initializeCancellation();
-    }
-  }, [isOpen, cancellationSession, isLoading, error]);
-
-  const initializeCancellation = async () => {
+  const initializeCancellation = useCallback(async () => {
     setIsLoading(true);
     setError('');
     
@@ -69,9 +59,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       if (result.success && result.data) {
         setCancellationSession(result.data);
         
-        // Don't restore UI state from database on page refresh
-        // Only maintain the session for A/B variant consistency
-        // UI state is only maintained during navigation within the same session
       } else {
         setError(result.error?.message || 'Failed to initialize cancellation');
       }
@@ -81,14 +68,18 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
 
-  // Helper to update global state
+  useEffect(() => {
+    if (isOpen && !cancellationSession && !isLoading && !error) {
+      initializeCancellation();
+    }
+  }, [isOpen, cancellationSession, isLoading, error, initializeCancellation]);
+
   const updateFlowData = (updates: Partial<FlowData>) => {
     setFlowData(prev => ({ ...prev, ...updates }));
   };
 
-  // Helper to persist all data at completion
   const persistFinalData = async (outcome: 'cancelled' | 'continued' | 'downsell_accepted' | 'pending-cancellation') => {
     if (cancellationSession?.id) {
       await cancellationService.finalizeCancellation(
@@ -101,7 +92,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
   };
 
   if (!isOpen) {
-    // Reset flow when modal closes
     if (currentStep !== 'initial') {
       setCurrentStep('initial');
       setCancellationSession(null);
@@ -111,7 +101,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     return null;
   }
 
-  // Show loading state
   if (isLoading) {
     return (
       <BaseModal isOpen={true} onClose={onClose} title="Loading...">
@@ -125,7 +114,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <BaseModal isOpen={true} onClose={onClose} title="Error">
@@ -151,18 +139,18 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // FLOW HANDLERS
-
   const handleJobResponse = (foundJob: boolean) => {
     console.log('Job response:', foundJob);
     updateFlowData({ jobFound: foundJob });
     
     if (foundJob) {
-      // Yes, I've found a job → go to survey
       setCurrentStep('survey');
     } else {
-      // No, I haven't found a job → go to downsell offer
-      setCurrentStep('job-search-downsell');
+      if (cancellationSession?.variant === 'B') {
+        setCurrentStep('job-search-downsell');
+      } else {
+        setCurrentStep('job-search-survey');
+      }
     }
   };
 
@@ -175,7 +163,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       companiesInterviewed: responses.companiesInterviewed as string
     });
     
-    // Survey → always go to feedback
     setCurrentStep('feedback');
   };
 
@@ -183,12 +170,9 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     console.log('Feedback submitted:', feedback);
     updateFlowData({ feedbackText: feedback });
     
-    // After feedback, check if they found job through Migrate Mate
     if (flowData.foundWithMigrateMate) {
-      // Found job through Migrate Mate → visa offer
       setCurrentStep('visa-offer');
     } else {
-      // Found job but NOT through Migrate Mate → downsell offer
       setCurrentStep('downsell-offer');
     }
   };
@@ -224,8 +208,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     await persistFinalData('pending-cancellation');
     onJobFoundResponse(true);
   };
-
-  // JOB SEARCH FLOW (No job found)
 
   const handleJobSearchDownsellAccept = () => {
     updateFlowData({ acceptedDownsell: true });
@@ -265,11 +247,17 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
   };
 
   const handleFinalCancellationBackToJobs = async () => {
-    await persistFinalData('cancelled');
     onJobFoundResponse(false);
   };
 
-  // RENDER FLOW STEPS
+  const handleCompleteCancellation = async () => {
+    await persistFinalData('pending-cancellation');
+    setCurrentStep('final-cancellation');
+  };
+
+  const updateVisaData = (hasLawyer: boolean, visaType?: string) => {
+    updateFlowData({ hasLawyer, visaType });
+  };
 
   if (currentStep === 'final-cancellation') {
     return (
@@ -300,9 +288,17 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       <JobSearchSurveyStep
         isOpen={true}
         onClose={onClose}
-        onBack={() => setCurrentStep('job-search-downsell')}
+        onBack={() => {
+          if (cancellationSession?.variant === 'B') {
+            setCurrentStep('job-search-downsell');
+          } else {
+            setCurrentStep('initial');
+          }
+        }}
         onAcceptOffer={handleJobSearchSurveyAcceptOffer}
         onComplete={handleJobSearchSurveyComplete}
+        onCompleteCancellation={handleCompleteCancellation}
+        variant={cancellationSession?.variant}
       />
     );
   }
@@ -356,6 +352,8 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         onClose={onClose}
         onBack={() => setCurrentStep('feedback')}
         onComplete={handleVisaOfferComplete}
+        onCompleteCancellation={handleCompleteCancellation}
+        onUpdateData={updateVisaData}
         defaultHasLawyer={flowData.hasLawyer}
         defaultVisaType={flowData.visaType}
       />
@@ -369,6 +367,8 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         onClose={onClose}
         onBack={() => setCurrentStep('feedback')}
         onComplete={handleDownsellOfferComplete}
+        onCompleteCancellation={handleCompleteCancellation}
+        onUpdateData={updateVisaData}
         defaultHasLawyer={flowData.hasLawyer}
         defaultVisaType={flowData.visaType}
       />
@@ -380,7 +380,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       setCurrentStep('survey');
     };
 
-    // Always step 3 of 4 in the "found job" flow
     return (
       <FeedbackStep
         isOpen={true}
@@ -411,16 +410,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Default: Initial step
   return (
     <BaseModal
       isOpen={true}
       onClose={onClose}
       title="Subscription Cancellation"
     >
-      {/* Desktop Content */}
       <div className="hidden md:flex flex-col gap-4 lg:gap-6">
-        {/* Heading */}
         <div className="flex flex-col gap-3 lg:gap-4">
           <div className="text-2xl lg:text-3xl xl:text-4xl font-semibold text-[#41403d] leading-tight">
             <p className="mb-0">Hey mate,</p>
@@ -431,16 +427,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
           </div>
         </div>
         
-        {/* Description */}
         <p className="text-sm lg:text-base font-semibold text-[#62605c] leading-relaxed max-w-md">
           Whatever your answer, we just want to help you take the next step. 
           With visa support, or by hearing how we can do better.
         </p>
         
-        {/* Divider line */}
         <div className="w-full h-px bg-gray-200" />
         
-        {/* Buttons */}
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
           <button
             onClick={() => handleJobResponse(true)}
@@ -474,10 +467,8 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         </div>
       </div>
 
-      {/* Mobile Content */}
       <div className="md:hidden flex flex-col h-full">
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
-          {/* Image */}
           <div className="w-full h-32 sm:h-40 relative rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6">
             <img 
               src="/skyline.png" 
@@ -488,9 +479,7 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
             <div className="absolute inset-0 shadow-inner" />
           </div>
           
-          {/* Content */}
           <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
-            {/* Heading */}
             <div className="flex flex-col gap-3 sm:gap-4">
               <div className="text-xl sm:text-2xl font-semibold text-[#41403d] leading-tight">
                 <p className="mb-1 sm:mb-2">Hey mate,</p>
@@ -502,14 +491,12 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
             </div>
           </div>
           
-          {/* Description */}
           <p className="text-sm font-semibold text-[#62605c] leading-relaxed">
             Whatever your answer, we just want to help you take the next step. 
             With visa support, or by hearing how we can do better.
           </p>
         </div>
         
-        {/* Buttons - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe flex flex-col gap-3 px-4 sm:px-6">
           <button
             onClick={() => handleJobResponse(true)}

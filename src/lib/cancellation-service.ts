@@ -330,13 +330,31 @@ export class CancellationService {
   async finalizeCancellation(
     sessionId: string, 
     userId: string, 
-    outcome: CancellationOutcome
+    outcome: CancellationOutcome,
+    flowData?: any
   ): Promise<ServiceResponse<boolean>> {
     try {
-      // Update cancellation record with final outcome
-      const updateResult = await this.updateCancellationStep(sessionId, userId, 'final-cancellation', {
+      // Update cancellation record with final outcome and flow data
+      const updateData: any = {
         final_outcome: outcome
-      });
+      };
+
+      // Include flow data if provided
+      if (flowData) {
+        if (flowData.jobFound !== undefined) updateData.job_found = flowData.jobFound;
+        if (flowData.foundWithMigrateMate !== undefined) updateData.found_with_migrate_mate = flowData.foundWithMigrateMate;
+        if (flowData.feedbackText) updateData.feedback_text = flowData.feedbackText;
+        if (flowData.visaType !== undefined) updateData.visa_type = flowData.visaType;
+        if (flowData.hasLawyer !== undefined) updateData.has_lawyer = flowData.hasLawyer;
+        if (flowData.acceptedDownsell !== undefined) updateData.accepted_downsell = flowData.acceptedDownsell;
+        if (flowData.cancellationReason) updateData.reason = flowData.cancellationReason;
+        // Include survey data fields
+        if (flowData.rolesApplied) updateData.roles_applied = flowData.rolesApplied;
+        if (flowData.companiesEmailed) updateData.companies_emailed = flowData.companiesEmailed;
+        if (flowData.companiesInterviewed) updateData.companies_interviewed = flowData.companiesInterviewed;
+      }
+
+      const updateResult = await this.updateCancellationStep(sessionId, userId, 'final-cancellation', updateData);
 
       if (!updateResult.success) {
         throw new Error('Failed to update cancellation with final outcome');
@@ -347,6 +365,8 @@ export class CancellationService {
         await secureDb.updateSubscriptionStatus(userId, 'cancelled');
       } else if (outcome === 'continued' || outcome === 'downsell_accepted') {
         await secureDb.updateSubscriptionStatus(userId, 'active');
+      } else if (outcome === 'pending-cancellation') {
+        await secureDb.updateSubscriptionStatus(userId, 'pending_cancellation');
       }
 
       logSecurityEvent('cancellation_finalized', userId, { 

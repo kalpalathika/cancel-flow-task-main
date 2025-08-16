@@ -85,8 +85,9 @@ export async function getOrAssignVariant(
       throw new Error('Invalid user ID');
     }
 
-    // Use provided cancellation data or fetch from database
-    const cancellation = existingCancellation ?? await secureDb.getCancellation(userId);
+    // Use provided cancellation data (including null) or fetch from database
+    // Only fetch if no parameter was provided at all
+    const cancellation = existingCancellation !== undefined ? existingCancellation : await secureDb.getCancellation(userId);
     
     if (cancellation && cancellation.downsell_variant) {
       logSecurityEvent('ab_variant_retrieved', userId, { 

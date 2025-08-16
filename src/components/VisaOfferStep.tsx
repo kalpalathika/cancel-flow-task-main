@@ -8,11 +8,13 @@ interface VisaOfferStepProps {
   onClose: () => void;
   onBack: () => void;
   onComplete: (hasLawyer: boolean, visaType?: string) => void;
+  onCompleteCancellation: () => void;
+  onUpdateData: (hasLawyer: boolean, visaType?: string) => void;
   defaultHasLawyer?: boolean;
   defaultVisaType?: string;
 }
 
-export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, defaultHasLawyer, defaultVisaType = '' }: VisaOfferStepProps) {
+export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, onCompleteCancellation, onUpdateData, defaultHasLawyer, defaultVisaType = '' }: VisaOfferStepProps) {
   const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(
     defaultHasLawyer !== undefined ? (defaultHasLawyer ? 'yes' : 'no') : null
   );
@@ -20,6 +22,14 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
 
   const handleSubmit = () => {
     if (selectedOption && (selectedOption === 'no' || visaType.trim())) {
+      onComplete(selectedOption === 'yes', visaType.trim() || undefined);
+    }
+  };
+
+  const handleCompleteCancellation = () => {
+    if (!isValid) return;
+    
+    if (selectedOption) {
       onComplete(selectedOption === 'yes', visaType.trim() || undefined);
     }
   };
@@ -36,23 +46,19 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
       progress={3}
       showImage={true}
     >
-      {/* Desktop Content */}
       <div className="hidden md:flex flex-col gap-4 lg:gap-6">
-        {/* Heading */}
         <div className="flex flex-col gap-3 lg:gap-4">
           <h1 className="text-2xl lg:text-3xl xl:text-4xl font-semibold text-[#41403d] leading-tight">
             We helped you land the job, now let&apos;s help you secure your visa.
           </h1>
         </div>
         
-        {/* Question */}
         <div className="flex flex-col gap-3 lg:gap-4">
           <p className="text-sm lg:text-base font-semibold text-[#62605c] leading-relaxed">
             Is your company providing an immigration lawyer to help with your visa?
           </p>
         </div>
         
-        {/* Radio Options */}
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
           <label className="flex items-center gap-3 cursor-pointer group">
             <input
@@ -101,7 +107,6 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
           </label>
         </div>
 
-        {/* Follow-up Questions */}
         {selectedOption === 'yes' && (
           <div className="flex flex-col gap-3 lg:gap-4 w-full">
             <p className="text-sm lg:text-base font-normal text-[#41403d] leading-relaxed">
@@ -132,18 +137,16 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
           </div>
         )}
         
-        {/* Divider line */}
         <div className="w-full h-px bg-gray-200" />
         
-        {/* Complete Button */}
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
           <button
-            onClick={handleSubmit}
+            onClick={handleCompleteCancellation}
             disabled={!isValid}
             className={`h-10 lg:h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
               isValid 
                 ? 'bg-[#4abf71] text-white hover:bg-[#3ea863]' 
-                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
             <span className="text-sm lg:text-base font-semibold">
@@ -153,9 +156,7 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
         </div>
       </div>
 
-      {/* Mobile Content */}
       <div className="md:hidden flex flex-col h-full">
-        {/* Back button for mobile */}
         <div className="p-4 pb-0">
           <button
             onClick={onBack}
@@ -169,24 +170,19 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
         </div>
 
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
-          {/* Content */}
           <div className="flex flex-col gap-4 sm:gap-6">
-            {/* Heading */}
             <div className="flex flex-col gap-3 sm:gap-4">
               <h1 className="text-xl sm:text-2xl font-semibold text-[#41403d] leading-tight">
                 We helped you land the job, now let&apos;s help you secure your visa.
               </h1>
               
-              {/* Divider line for mobile */}
               <div className="w-full h-px bg-gray-200" />
             </div>
             
-            {/* Question */}
             <p className="text-sm sm:text-base font-semibold text-[#41403d] leading-relaxed">
               Is your company providing an immigration lawyer to help with your visa?*
             </p>
             
-            {/* Radio Options */}
             <div className="flex flex-col gap-2 sm:gap-3 w-full">
               <label className="flex items-center gap-3 cursor-pointer group py-2">
                 <input
@@ -235,7 +231,6 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
               </label>
             </div>
 
-            {/* Follow-up Questions for Mobile */}
             {selectedOption === 'yes' && (
               <div className="flex flex-col gap-3 w-full mt-4">
                 <p className="text-sm sm:text-base font-normal text-[#41403d] leading-relaxed">
@@ -271,12 +266,12 @@ export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, def
         {/* Complete Button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
-            onClick={handleSubmit}
+            onClick={handleCompleteCancellation}
             disabled={!isValid}
             className={`h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
               isValid 
                 ? 'bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558]' 
-                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
             <span className="text-base font-semibold">

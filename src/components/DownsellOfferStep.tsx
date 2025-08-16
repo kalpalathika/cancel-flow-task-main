@@ -8,11 +8,13 @@ interface DownsellOfferStepProps {
   onClose: () => void;
   onBack: () => void;
   onComplete: (hasLawyer: boolean, visaType?: string) => void;
+  onCompleteCancellation: () => void;
+  onUpdateData: (hasLawyer: boolean, visaType?: string) => void;
   defaultHasLawyer?: boolean;
   defaultVisaType?: string;
 }
 
-export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete, defaultHasLawyer, defaultVisaType = '' }: DownsellOfferStepProps) {
+export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete, onCompleteCancellation, onUpdateData, defaultHasLawyer, defaultVisaType = '' }: DownsellOfferStepProps) {
   const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(
     defaultHasLawyer !== undefined ? (defaultHasLawyer ? 'yes' : 'no') : null
   );
@@ -20,6 +22,16 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete,
 
   const handleSubmit = () => {
     if (selectedOption && (selectedOption === 'yes' || visaType.trim())) {
+      onComplete(selectedOption === 'yes', visaType.trim() || undefined);
+    }
+  };
+
+  const handleCompleteCancellation = () => {
+    // Only proceed if form is valid
+    if (!isValid) return;
+    
+    // Save current form values and navigate to appropriate completion screen
+    if (selectedOption) {
       onComplete(selectedOption === 'yes', visaType.trim() || undefined);
     }
   };
@@ -149,13 +161,8 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete,
         {/* Complete Button */}
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
           <button
-            onClick={handleSubmit}
-            disabled={!isValid}
-            className={`h-10 lg:h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
-              isValid 
-                ? 'bg-[#4abf71] text-white hover:bg-[#3ea863]' 
-                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
-            }`}
+            onClick={handleCompleteCancellation}
+            className="h-10 lg:h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] transition-colors flex items-center justify-center"
           >
             <span className="text-sm lg:text-base font-semibold">
               Complete cancellation
@@ -289,13 +296,8 @@ export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete,
         {/* Complete Button - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe px-4 sm:px-6">
           <button
-            onClick={handleSubmit}
-            disabled={!isValid}
-            className={`h-12 w-full rounded-lg transition-colors flex items-center justify-center ${
-              isValid 
-                ? 'bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558]' 
-                : 'bg-[#e6e6e6] text-[#b5b3af] cursor-not-allowed'
-            }`}
+            onClick={handleCompleteCancellation}
+            className="h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558] transition-colors flex items-center justify-center"
           >
             <span className="text-base font-semibold">
               Complete cancellation

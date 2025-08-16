@@ -79,7 +79,17 @@ export interface Cancellation {
   downsell_variant: 'A' | 'B';
   reason: string | null;
   accepted_downsell: boolean;
+  job_found: boolean | null;
+  found_with_migrate_mate: boolean | null;
+  feedback_text: string | null;
+  visa_type: string | null;
+  has_lawyer: boolean | null;
+  final_outcome: string | null;
+  roles_applied: string | null;
+  companies_emailed: string | null;
+  companies_interviewed: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 // Secure database operations

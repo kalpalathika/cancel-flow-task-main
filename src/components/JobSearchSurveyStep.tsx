@@ -9,6 +9,8 @@ interface JobSearchSurveyStepProps {
   onBack: () => void;
   onAcceptOffer: () => void;
   onComplete: () => void;
+  onCompleteCancellation: () => void;
+  variant?: 'A' | 'B';
   showWarningState?: boolean;
 }
 
@@ -24,6 +26,8 @@ export default function JobSearchSurveyStep({
   onBack, 
   onAcceptOffer, 
   onComplete,
+  onCompleteCancellation,
+  variant,
   showWarningState = false
 }: JobSearchSurveyStepProps) {
   const [responses, setResponses] = useState<SurveyResponses>({
@@ -165,14 +169,17 @@ export default function JobSearchSurveyStep({
 
         {/* Buttons */}
         <div className="flex flex-col gap-3 lg:gap-4 w-full">
-          <button
-            onClick={onAcceptOffer}
-            className="h-10 lg:h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] transition-colors flex items-center justify-center"
-          >
-            <span className="text-sm lg:text-base font-semibold">
-              Get 50% off | $12.50 <span className="line-through">$25</span>
-            </span>
-          </button>
+          {/* Downsell offer - only show for variant B */}
+          {variant === 'B' && (
+            <button
+              onClick={onAcceptOffer}
+              className="h-10 lg:h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] transition-colors flex items-center justify-center"
+            >
+              <span className="text-sm lg:text-base font-semibold">
+                Get 50% off | $12.50 <span className="line-through">$25</span>
+              </span>
+            </button>
+          )}
           
           <button
             onClick={handleContinue}
@@ -279,14 +286,17 @@ export default function JobSearchSurveyStep({
         
         {/* Buttons - Fixed at bottom with safe area */}
         <div className="bg-white border-t border-gray-100 pt-4 pb-safe flex flex-col gap-3 px-4 sm:px-6">
-          <button
-            onClick={onAcceptOffer}
-            className="h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558] transition-colors flex items-center justify-center"
-          >
-            <span className="text-base font-semibold">
-              Get 50% off | $12.50 <span className="line-through">$25</span>
-            </span>
-          </button>
+          {/* Downsell offer - only show for variant B */}
+          {variant === 'B' && (
+            <button
+              onClick={onAcceptOffer}
+              className="h-12 w-full rounded-lg bg-[#4abf71] text-white hover:bg-[#3ea863] active:bg-[#359558] transition-colors flex items-center justify-center"
+            >
+              <span className="text-base font-semibold">
+                Get 50% off | $12.50 <span className="line-through">$25</span>
+              </span>
+            </button>
+          )}
           
           <button
             onClick={handleContinue}

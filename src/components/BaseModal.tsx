@@ -63,14 +63,7 @@ export default function BaseModal({
       {/* Background overlay with backdrop */}
       <div className="absolute inset-0 bg-[#b5b3af] backdrop-blur-[10px]" />
       
-      {/* Background image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
-        style={{
-          backgroundImage: `url('/api/placeholder/1677/865')`,
-          backgroundPosition: 'center 28px'
-        }}
-      />
+      {/* Plain background as per Figma design */}
       
       {/* Modal content - Desktop */}
       <div className="relative z-10 hidden md:block max-w-7xl mx-auto px-4">
