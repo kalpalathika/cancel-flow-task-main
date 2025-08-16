@@ -8,6 +8,7 @@ interface CongratsSurveyProps {
   onClose: () => void;
   onBack: () => void;
   onContinue: (responses: SurveyResponses) => void;
+  defaultResponses?: Partial<SurveyResponses>;
 }
 
 interface SurveyResponses {
@@ -17,12 +18,12 @@ interface SurveyResponses {
   companiesInterviewed: string | null;
 }
 
-export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue }: CongratsSurveyProps) {
+export default function CongratsSurvey({ isOpen, onClose, onBack, onContinue, defaultResponses = {} }: CongratsSurveyProps) {
   const [responses, setResponses] = useState<SurveyResponses>({
-    foundWithMigrateMate: null,
-    rolesApplied: null,
-    companiesEmailed: null,
-    companiesInterviewed: null
+    foundWithMigrateMate: defaultResponses.foundWithMigrateMate ?? null,
+    rolesApplied: defaultResponses.rolesApplied ?? null,
+    companiesEmailed: defaultResponses.companiesEmailed ?? null,
+    companiesInterviewed: defaultResponses.companiesInterviewed ?? null
   });
 
   const isComplete = responses.foundWithMigrateMate !== null && 

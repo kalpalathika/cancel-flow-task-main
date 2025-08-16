@@ -24,16 +24,32 @@ interface CancellationFlowProps {
 
 type FlowStep = 'initial' | 'feedback' | 'survey' | 'visa-offer' | 'downsell-offer' | 'completion' | 'yes-lawyer-completion' | 'job-search-downsell' | 'subscription-continued' | 'job-search-survey' | 'cancellation-reason' | 'final-cancellation';
 
+// Global state object to collect all data - persist only at the end
+interface FlowData {
+  jobFound?: boolean;
+  foundWithMigrateMate?: boolean;
+  feedbackText?: string;
+  visaType?: string;
+  hasLawyer?: boolean;
+  acceptedDownsell?: boolean;
+  cancellationReason?: string;
+  cancellationReasonDetails?: string;
+  // Survey-specific fields
+  rolesApplied?: string;
+  companiesEmailed?: string;
+  companiesInterviewed?: string;
+}
+
 export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }: CancellationFlowProps) {
   const [currentStep, setCurrentStep] = useState<FlowStep>('initial');
-  const [userFoundJob, setUserFoundJob] = useState<boolean>(false);
-  const [foundWithMigrateMate, setFoundWithMigrateMate] = useState<boolean>(false);
   const [cancellationSession, setCancellationSession] = useState<CancellationSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  
+  // Global state object - collect all data here
+  const [flowData, setFlowData] = useState<FlowData>({});
 
   // Mock user ID - in real app this would come from auth context
-  // Using the first user ID from your database
   const userId = '550e8400-e29b-41d4-a716-446655440001';
 
   // Initialize cancellation session when modal opens
@@ -52,15 +68,10 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       
       if (result.success && result.data) {
         setCancellationSession(result.data);
-        setCurrentStep(result.data.currentStep as FlowStep);
         
-        // Restore previous state if resuming session
-        if (result.data.jobFound !== undefined) {
-          setUserFoundJob(result.data.jobFound);
-        }
-        if (result.data.foundWithMigrateMate !== undefined) {
-          setFoundWithMigrateMate(result.data.foundWithMigrateMate);
-        }
+        // Don't restore UI state from database on page refresh
+        // Only maintain the session for A/B variant consistency
+        // UI state is only maintained during navigation within the same session
       } else {
         setError(result.error?.message || 'Failed to initialize cancellation');
       }
@@ -72,11 +83,29 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     }
   };
 
+  // Helper to update global state
+  const updateFlowData = (updates: Partial<FlowData>) => {
+    setFlowData(prev => ({ ...prev, ...updates }));
+  };
+
+  // Helper to persist all data at completion
+  const persistFinalData = async (outcome: 'cancelled' | 'continued' | 'downsell_accepted' | 'pending-cancellation') => {
+    if (cancellationSession?.id) {
+      await cancellationService.finalizeCancellation(
+        cancellationSession.id,
+        userId,
+        outcome,
+        flowData
+      );
+    }
+  };
+
   if (!isOpen) {
     // Reset flow when modal closes
     if (currentStep !== 'initial') {
       setCurrentStep('initial');
       setCancellationSession(null);
+      setFlowData({});
       setError('');
     }
     return null;
@@ -122,292 +151,126 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  const handleJobResponse = async (foundJob: boolean) => {
-    setUserFoundJob(foundJob);
+  // FLOW HANDLERS
+
+  const handleJobResponse = (foundJob: boolean) => {
+    console.log('Job response:', foundJob);
+    updateFlowData({ jobFound: foundJob });
     
-    // Update cancellation record with job found status
-    if (cancellationSession?.id) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id,
-        userId,
-        'initial',
-        { job_found: foundJob }
-      );
-    }
-    
-    // Check if this is a resumed session with existing data
-    if (cancellationSession?.jobFound !== undefined && cancellationSession.jobFound === foundJob) {
-      // User made the same choice as before, restore their progress
-      if (foundJob) {
-        // If they found a job and we have survey data, skip to appropriate step
-        if (cancellationSession.foundWithMigrateMate !== undefined) {
-          if (cancellationSession.feedbackText) {
-            // They've completed feedback, go to next step based on their survey response
-            if (cancellationSession.foundWithMigrateMate) {
-              setCurrentStep('visa-offer');
-            } else {
-              setCurrentStep('downsell-offer');
-            }
-          } else {
-            // They've completed survey but not feedback
-            setFoundWithMigrateMate(cancellationSession.foundWithMigrateMate);
-            setCurrentStep('feedback');
-          }
-        } else {
-          // No survey data yet, go to survey
-          setCurrentStep('survey');
-        }
-      } else {
-        // They didn't find a job, show the downsell offer
-        setCurrentStep('job-search-downsell');
-      }
+    if (foundJob) {
+      // Yes, I've found a job → go to survey
+      setCurrentStep('survey');
     } else {
-      // New choice or different choice, follow normal flow
-      if (foundJob) {
-        // If they found a job, go to congrats survey first
-        setCurrentStep('survey');
-      } else {
-        // If they didn't find a job, show the downsell offer first
-        setCurrentStep('job-search-downsell');
-      }
+      // No, I haven't found a job → go to downsell offer
+      setCurrentStep('job-search-downsell');
     }
   };
 
-  const handleSurveyComplete = async (responses: Record<string, unknown>) => {
+  const handleSurveyComplete = (responses: Record<string, unknown>) => {
     console.log('Survey responses:', responses);
-    const foundJobWithMM = responses.foundWithMigrateMate as boolean;
-    setFoundWithMigrateMate(foundJobWithMM);
+    updateFlowData({ 
+      foundWithMigrateMate: responses.foundWithMigrateMate as boolean,
+      rolesApplied: responses.rolesApplied as string,
+      companiesEmailed: responses.companiesEmailed as string,
+      companiesInterviewed: responses.companiesInterviewed as string
+    });
     
-    // Save survey response to database
-    if (cancellationSession) {
-      await cancellationService.processSurveyResponse(
-        cancellationSession.id!,
-        userId,
-        {
-          foundJob: userFoundJob,
-          foundWithMigrateMate: foundJobWithMM,
-          jobTitle: responses.jobTitle as string,
-          companyName: responses.companyName as string,
-          salary: responses.salary as number,
-          startDate: responses.startDate as string
-        }
-      );
-    }
-    
-    // Always go to feedback step after survey, regardless of MM response
+    // Survey → always go to feedback
     setCurrentStep('feedback');
   };
 
-  const handleBackToInitial = () => {
-    setCurrentStep('initial');
-  };
-
-  const handleFeedbackSubmit = async (feedback: string) => {
+  const handleFeedbackSubmit = (feedback: string) => {
     console.log('Feedback submitted:', feedback);
+    updateFlowData({ feedbackText: feedback });
     
-    // Save feedback to database
-    if (cancellationSession) {
-      await cancellationService.processFeedbackResponse(
-        cancellationSession.id!,
-        userId,
-        {
-          text: feedback,
-          step: 'feedback',
-          timestamp: new Date()
-        }
-      );
-    }
-    
-    // Check if they found job with Migrate Mate from survey
-    if (userFoundJob && foundWithMigrateMate) {
-      // If yes, go to visa offer step
+    // After feedback, check if they found job through Migrate Mate
+    if (flowData.foundWithMigrateMate) {
+      // Found job through Migrate Mate → visa offer
       setCurrentStep('visa-offer');
-    } else if (userFoundJob && !foundWithMigrateMate) {
-      // If they found job but NOT with Migrate Mate, go to downsell offer
-      setCurrentStep('downsell-offer');
     } else {
-      // If they didn't find a job, complete the cancellation flow
-      onJobFoundResponse(false);
+      // Found job but NOT through Migrate Mate → downsell offer
+      setCurrentStep('downsell-offer');
     }
   };
 
-  const handleVisaOfferComplete = async (hasLawyer: boolean, visaType?: string) => {
+  const handleVisaOfferComplete = (hasLawyer: boolean, visaType?: string) => {
     console.log('Visa offer response:', hasLawyer, 'Visa type:', visaType);
+    updateFlowData({ hasLawyer, visaType });
     
-    // Save visa offer response to database
-    if (cancellationSession) {
-      await cancellationService.processVisaOfferResponse(
-        cancellationSession.id!,
-        userId,
-        {
-          hasLawyer,
-          visaType
-        }
-      );
-    }
-    
-    // If they have a lawyer (Yes), show yes-lawyer completion screen
     if (hasLawyer) {
       setCurrentStep('yes-lawyer-completion');
     } else {
-      // If they don't have a lawyer (No), show regular completion screen
       setCurrentStep('completion');
     }
   };
 
   const handleDownsellOfferComplete = (hasLawyer: boolean, visaType?: string) => {
     console.log('Downsell offer response:', hasLawyer, 'Visa type:', visaType);
-    // If they have a lawyer (Yes), show yes-lawyer completion screen
+    updateFlowData({ hasLawyer, visaType });
+    
     if (hasLawyer) {
       setCurrentStep('yes-lawyer-completion');
     } else {
-      // If they don't have a lawyer (No), show regular completion screen
       setCurrentStep('completion');
     }
   };
 
   const handleCompletionFinish = async () => {
-    // Finalize cancellation with continued outcome
-    if (cancellationSession) {
-      await cancellationService.finalizeCancellation(
-        cancellationSession.id!,
-        userId,
-        'pending-cancellation'
-      );
-    }
-    
-    // Complete the cancellation flow
+    await persistFinalData('pending-cancellation');
     onJobFoundResponse(true);
   };
 
   const handleYesLawyerCompletionFinish = async () => {
-    // Finalize cancellation with continued outcome
-    if (cancellationSession) {
-      await cancellationService.finalizeCancellation(
-        cancellationSession.id!,
-        userId,
-        'pending-cancellation'
-      );
-    }
-    
-    // Complete the cancellation flow
+    await persistFinalData('pending-cancellation');
     onJobFoundResponse(true);
   };
 
-  const handleJobSearchDownsellAccept = async () => {
-    // Mark downsell as accepted
-    if (cancellationSession) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id!,
-        userId,
-        'job-search-downsell',
-        { accepted_downsell: true }
-      );
-    }
-    
-    // User accepted the downsell offer, show subscription continued screen
+  // JOB SEARCH FLOW (No job found)
+
+  const handleJobSearchDownsellAccept = () => {
+    updateFlowData({ acceptedDownsell: true });
     setCurrentStep('subscription-continued');
   };
 
-  const handleJobSearchDownsellDecline = async () => {
-    // Mark downsell as declined
-    if (cancellationSession) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id!,
-        userId,
-        'job-search-downsell',
-        { accepted_downsell: false }
-      );
-    }
-    
-    // User declined the downsell offer, go to survey step
+  const handleJobSearchDownsellDecline = () => {
+    updateFlowData({ acceptedDownsell: false });
     setCurrentStep('job-search-survey');
   };
 
   const handleSubscriptionContinuedFinish = async () => {
-    // Finalize with downsell accepted outcome
-    if (cancellationSession) {
-      await cancellationService.finalizeCancellation(
-        cancellationSession.id!,
-        userId,
-        'downsell_accepted'
-      );
-    }
-    
-    // User completed the subscription continuation, go to survey step
+    await persistFinalData('downsell_accepted');
     setCurrentStep('job-search-survey');
   };
 
-  const handleJobSearchSurveyAcceptOffer = async () => {
-    // Mark second downsell as accepted
-    if (cancellationSession) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id!,
-        userId,
-        'job-search-survey',
-        { accepted_downsell: true }
-      );
-    }
-    
-    // User accepted 50% off from survey, go to subscription continued
+  const handleJobSearchSurveyAcceptOffer = () => {
+    updateFlowData({ acceptedDownsell: true });
     setCurrentStep('subscription-continued');
   };
 
-  const handleJobSearchSurveyComplete = async () => {
-    // Track survey completion
-    if (cancellationSession) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id!,
-        userId,
-        'job-search-survey',
-        { cancellation_step: 'job-search-survey' }
-      );
-    }
-    
-    // User completed the survey without accepting offer, go to cancellation reason step
+  const handleJobSearchSurveyComplete = () => {
     setCurrentStep('cancellation-reason');
   };
 
-  const handleCancellationReasonAcceptOffer = async () => {
-    // Mark final downsell as accepted
-    if (cancellationSession) {
-      await cancellationService.updateCancellationStep(
-        cancellationSession.id!,
-        userId,
-        'cancellation-reason',
-        { accepted_downsell: true }
-      );
-    }
-    
-    // User accepted 50% off from cancellation reason, go to subscription continued
+  const handleCancellationReasonAcceptOffer = () => {
+    updateFlowData({ acceptedDownsell: true });
     setCurrentStep('subscription-continued');
   };
 
-  const handleCancellationReasonComplete = async () => {
-    // Mark subscription as pending cancellation
-    if (cancellationSession) {
-      await cancellationService.markSubscriptionPendingCancellation(userId);
-    }
-    
-    // User completed cancellation reason without accepting offer, show final cancellation screen
+  const handleCancellationReasonComplete = (reason?: string, details?: string) => {
+    updateFlowData({ 
+      cancellationReason: reason,
+      cancellationReasonDetails: details 
+    });
     setCurrentStep('final-cancellation');
   };
 
   const handleFinalCancellationBackToJobs = async () => {
-    // Finalize cancellation
-    if (cancellationSession) {
-      await cancellationService.finalizeCancellation(
-        cancellationSession.id!,
-        userId,
-        'pending-cancellation'
-      );
-    }
-    
-    // User clicked back to jobs, complete the cancellation flow
+    await persistFinalData('cancelled');
     onJobFoundResponse(false);
   };
 
-  // Show final cancellation step
+  // RENDER FLOW STEPS
+
   if (currentStep === 'final-cancellation') {
     return (
       <FinalCancellationStep
@@ -418,7 +281,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show cancellation reason step
   if (currentStep === 'cancellation-reason') {
     return (
       <CancellationReasonStep
@@ -427,11 +289,12 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         onBack={() => setCurrentStep('job-search-survey')}
         onAcceptOffer={handleCancellationReasonAcceptOffer}
         onComplete={handleCancellationReasonComplete}
+        defaultReason={flowData.cancellationReason}
+        defaultDetails={flowData.cancellationReasonDetails}
       />
     );
   }
 
-  // Show job search survey step
   if (currentStep === 'job-search-survey') {
     return (
       <JobSearchSurveyStep
@@ -444,7 +307,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show subscription continued step
   if (currentStep === 'subscription-continued') {
     return (
       <SubscriptionContinuedStep
@@ -455,7 +317,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show job search downsell step
   if (currentStep === 'job-search-downsell') {
     return (
       <JobSearchDownsellStep
@@ -468,7 +329,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show yes-lawyer completion step
   if (currentStep === 'yes-lawyer-completion') {
     return (
       <YesLawyerCompletionStep
@@ -479,7 +339,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show completion step
   if (currentStep === 'completion') {
     return (
       <CompletionStep
@@ -490,7 +349,6 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
     );
   }
 
-  // Show visa offer step (only if they found job with Migrate Mate)
   if (currentStep === 'visa-offer') {
     return (
       <VisaOfferStep
@@ -498,11 +356,12 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         onClose={onClose}
         onBack={() => setCurrentStep('feedback')}
         onComplete={handleVisaOfferComplete}
+        defaultHasLawyer={flowData.hasLawyer}
+        defaultVisaType={flowData.visaType}
       />
     );
   }
 
-  // Show downsell offer step (if they found job but NOT with Migrate Mate)
   if (currentStep === 'downsell-offer') {
     return (
       <DownsellOfferStep
@@ -510,68 +369,49 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
         onClose={onClose}
         onBack={() => setCurrentStep('feedback')}
         onComplete={handleDownsellOfferComplete}
+        defaultHasLawyer={flowData.hasLawyer}
+        defaultVisaType={flowData.visaType}
       />
     );
   }
 
-  // Show feedback step
   if (currentStep === 'feedback') {
     const handleFeedbackBack = () => {
-      if (userFoundJob) {
-        // If they found a job, go back to survey
-        setCurrentStep('survey');
-      } else {
-        // If they didn't find a job, go back to initial
-        setCurrentStep('initial');
-      }
+      setCurrentStep('survey');
     };
 
-    // Determine step number based on flow
-    let stepNumber: number;
-    let stepText: string;
-    
-    if (userFoundJob && foundWithMigrateMate) {
-      // Path: Initial → Survey → Feedback → Visa Offer (step 3 of 4) 
-      stepNumber = 3;
-      stepText = "Step 3 of 4";
-    } else if (userFoundJob && !foundWithMigrateMate) {
-      // Path: Initial → Survey → Feedback → Downsell Offer (step 3 of 4)
-      stepNumber = 3;
-      stepText = "Step 3 of 4";
-    } else if (userFoundJob) {
-      // Path: Initial → Survey → Feedback (step 3 of 3) - fallback
-      stepNumber = 3;
-      stepText = "Step 3 of 3";
-    } else {
-      // Path: Initial → Feedback (step 2 of 2)
-      stepNumber = 2;
-      stepText = "Step 2 of 2";
-    }
-
+    // Always step 3 of 4 in the "found job" flow
     return (
       <FeedbackStep
         isOpen={true}
         onClose={onClose}
         onBack={handleFeedbackBack}
         onContinue={handleFeedbackSubmit}
-        stepNumber={stepNumber}
-        stepText={stepText}
+        stepNumber={3}
+        stepText="Step 3 of 4"
+        defaultFeedback={flowData.feedbackText}
       />
     );
   }
 
-  // Show survey if user said they found a job
   if (currentStep === 'survey') {
     return (
       <CongratsSurvey
         isOpen={true}
         onClose={onClose}
-        onBack={handleBackToInitial}
+        onBack={() => setCurrentStep('initial')}
         onContinue={handleSurveyComplete}
+        defaultResponses={{
+          foundWithMigrateMate: flowData.foundWithMigrateMate,
+          rolesApplied: flowData.rolesApplied,
+          companiesEmailed: flowData.companiesEmailed,
+          companiesInterviewed: flowData.companiesInterviewed
+        }}
       />
     );
   }
 
+  // Default: Initial step
   return (
     <BaseModal
       isOpen={true}
@@ -605,13 +445,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
           <button
             onClick={() => handleJobResponse(true)}
             className={`h-10 lg:h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
-              userFoundJob === true
+              flowData.jobFound === true
                 ? 'border-[#8952fc] bg-[#8952fc] text-white'
                 : 'border-gray-200 bg-white hover:bg-gray-50'
             }`}
           >
             <span className={`text-sm lg:text-base font-semibold ${
-              userFoundJob === true ? 'text-white' : 'text-[#62605c]'
+              flowData.jobFound === true ? 'text-white' : 'text-[#62605c]'
             }`}>
               Yes, I&apos;ve found a job
             </span>
@@ -620,13 +460,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
           <button
             onClick={() => handleJobResponse(false)}
             className={`h-10 lg:h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
-              userFoundJob === false
+              flowData.jobFound === false
                 ? 'border-[#8952fc] bg-[#8952fc] text-white'
                 : 'border-gray-200 bg-white hover:bg-gray-50'
             }`}
           >
             <span className={`text-sm lg:text-base font-semibold ${
-              userFoundJob === false ? 'text-white' : 'text-[#62605c]'
+              flowData.jobFound === false ? 'text-white' : 'text-[#62605c]'
             }`}>
               Not yet - I&apos;m still looking
             </span>
@@ -674,13 +514,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
           <button
             onClick={() => handleJobResponse(true)}
             className={`h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
-              userFoundJob === true
+              flowData.jobFound === true
                 ? 'border-[#8952fc] bg-[#8952fc] text-white'
                 : 'border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100'
             }`}
           >
             <span className={`text-base font-semibold ${
-              userFoundJob === true ? 'text-white' : 'text-[#62605c]'
+              flowData.jobFound === true ? 'text-white' : 'text-[#62605c]'
             }`}>
               Yes, I&apos;ve found a job
             </span>
@@ -689,13 +529,13 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
           <button
             onClick={() => handleJobResponse(false)}
             className={`h-12 w-full rounded-lg border-2 transition-colors flex items-center justify-center ${
-              userFoundJob === false
+              flowData.jobFound === false
                 ? 'border-[#8952fc] bg-[#8952fc] text-white'
                 : 'border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100'
             }`}
           >
             <span className={`text-base font-semibold ${
-              userFoundJob === false ? 'text-white' : 'text-[#62605c]'
+              flowData.jobFound === false ? 'text-white' : 'text-[#62605c]'
             }`}>
               Not yet - I&apos;m still looking
             </span>

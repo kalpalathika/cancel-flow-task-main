@@ -9,21 +9,48 @@ interface CancellationReasonStepProps {
   onClose: () => void;
   onBack: () => void;
   onAcceptOffer: () => void;
-  onComplete: () => void;
+  onComplete: (reason?: string, details?: string) => void;
+  defaultReason?: string;
+  defaultDetails?: string;
 }
 
 type CancellationReason = 'too-expensive' | 'platform-not-helpful' | 'not-enough-jobs' | 'decided-not-to-move' | 'other';
+
+const mapReasonToType = (reason: string): CancellationReason | null => {
+  switch (reason) {
+    case 'Too expensive': return 'too-expensive';
+    case 'Platform not helpful': return 'platform-not-helpful';
+    case 'Not enough relevant jobs': return 'not-enough-jobs';
+    case 'Decided not to move': return 'decided-not-to-move';
+    case 'Other': return 'other';
+    default: return null;
+  }
+};
+
+const mapTypeToReason = (type: CancellationReason): string => {
+  switch (type) {
+    case 'too-expensive': return 'Too expensive';
+    case 'platform-not-helpful': return 'Platform not helpful';
+    case 'not-enough-jobs': return 'Not enough relevant jobs';
+    case 'decided-not-to-move': return 'Decided not to move';
+    case 'other': return 'Other';
+  }
+};
 
 export default function CancellationReasonStep({ 
   isOpen, 
   onClose, 
   onBack, 
   onAcceptOffer, 
-  onComplete 
+  onComplete,
+  defaultReason = '',
+  defaultDetails = ''
 }: CancellationReasonStepProps) {
-  const [selectedReason, setSelectedReason] = useState<CancellationReason | null>(null);
-  const [priceInput, setPriceInput] = useState('');
-  const [textFeedback, setTextFeedback] = useState('');
+  const [selectedReason, setSelectedReason] = useState<CancellationReason | null>(
+    defaultReason ? mapReasonToType(defaultReason) : null
+  );
+  const [priceInput, setPriceInput] = useState(selectedReason === 'too-expensive' ? defaultDetails : '');
+  const [textFeedback, setTextFeedback] = useState(selectedReason && selectedReason !== 'too-expensive' ? defaultDetails : '');
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [error, setError] = useState('');
 
@@ -68,7 +95,7 @@ export default function CancellationReasonStep({
         validateCancellationReason(reasonMap[selectedReason], details);
         
         setError('');
-        onComplete();
+        onComplete(reasonMap[selectedReason], details);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Invalid input';
         setError(errorMessage);

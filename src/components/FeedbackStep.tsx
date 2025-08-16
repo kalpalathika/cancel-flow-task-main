@@ -11,10 +11,11 @@ interface FeedbackStepProps {
   onContinue: (feedback: string) => void;
   stepNumber?: number;
   stepText?: string;
+  defaultFeedback?: string;
 }
 
-export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, stepNumber = 2, stepText = "Step 2 of 3" }: FeedbackStepProps) {
-  const [feedback, setFeedback] = useState('');
+export default function FeedbackStep({ isOpen, onClose, onBack, onContinue, stepNumber = 2, stepText = "Step 2 of 3", defaultFeedback = '' }: FeedbackStepProps) {
+  const [feedback, setFeedback] = useState(defaultFeedback);
   const [error, setError] = useState('');
 
   const handleSubmit = () => {

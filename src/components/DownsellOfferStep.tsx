@@ -8,11 +8,15 @@ interface DownsellOfferStepProps {
   onClose: () => void;
   onBack: () => void;
   onComplete: (hasLawyer: boolean, visaType?: string) => void;
+  defaultHasLawyer?: boolean;
+  defaultVisaType?: string;
 }
 
-export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete }: DownsellOfferStepProps) {
-  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(null);
-  const [visaType, setVisaType] = useState('');
+export default function DownsellOfferStep({ isOpen, onClose, onBack, onComplete, defaultHasLawyer, defaultVisaType = '' }: DownsellOfferStepProps) {
+  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(
+    defaultHasLawyer !== undefined ? (defaultHasLawyer ? 'yes' : 'no') : null
+  );
+  const [visaType, setVisaType] = useState(defaultVisaType);
 
   const handleSubmit = () => {
     if (selectedOption && (selectedOption === 'yes' || visaType.trim())) {

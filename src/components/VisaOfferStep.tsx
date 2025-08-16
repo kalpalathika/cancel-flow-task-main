@@ -8,11 +8,15 @@ interface VisaOfferStepProps {
   onClose: () => void;
   onBack: () => void;
   onComplete: (hasLawyer: boolean, visaType?: string) => void;
+  defaultHasLawyer?: boolean;
+  defaultVisaType?: string;
 }
 
-export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete }: VisaOfferStepProps) {
-  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(null);
-  const [visaType, setVisaType] = useState('');
+export default function VisaOfferStep({ isOpen, onClose, onBack, onComplete, defaultHasLawyer, defaultVisaType = '' }: VisaOfferStepProps) {
+  const [selectedOption, setSelectedOption] = useState<'yes' | 'no' | null>(
+    defaultHasLawyer !== undefined ? (defaultHasLawyer ? 'yes' : 'no') : null
+  );
+  const [visaType, setVisaType] = useState(defaultVisaType);
 
   const handleSubmit = () => {
     if (selectedOption && (selectedOption === 'no' || visaType.trim())) {
