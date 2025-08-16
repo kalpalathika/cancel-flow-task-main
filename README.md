@@ -10,7 +10,7 @@ A focused **Next.js (App Router)** module that runs a secure, experiment-ready *
 
 **Tech stack**
 - **Next.js + React (TypeScript)** for UI, modal-based multi-step flow.
-- **Supabase** for auth, database, and realtime.
+- **Supabase** for database.
 
 **Module boundaries**
 - `src/components/*` – stateless UI steps (e.g., `JobSearchSurveyStep.tsx`, `DownsellOfferStep.tsx`, `FinalCancellationStep.tsx`). The orchestrator is `CancellationFlow.tsx`.
@@ -29,17 +29,6 @@ A focused **Next.js (App Router)** module that runs a secure, experiment-ready *
 
 ---
 
-## 🔐 Security Implementation
-
-- Environment variables validated **server-side only** (hard fail if missing).
-- **Admin client** is never created on the client.
-- **RLS policies** in Supabase enforce user isolation (`user_id = auth.uid()`) - Incomplete.
-- Payloads sanitized with `sanitizeForDatabase(...)`.
-- **CSRF protection** added for server actions/endpoints.
-- Security/audit events logged via `logSecurityEvent`.
-
----
-
 ## 🧪 A/B Testing Approach
 
 - Deterministic assignment of **Variant A | B** using `ab-testing.ts` (hash-based).
@@ -47,8 +36,6 @@ A focused **Next.js (App Router)** module that runs a secure, experiment-ready *
 - Surfaces differ by variant:
   - **A** → survey before offer
   - **B** → early down-sell step
-- Outcomes persisted: `continued`, `downsell_accepted`, `pending-cancellation`, `cancelled`.
-- Events logged for funnel measurement and retention tracking.
 
 ---
 
@@ -69,6 +56,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # server only
 
 create .env.local and place the .env.example above with actual keys in it
 npm run db:setup
+
+Note: Did not have time to test RLS completely, please disable RLS in DB if it does not work
 ```
 
 ## Future Enhancements
