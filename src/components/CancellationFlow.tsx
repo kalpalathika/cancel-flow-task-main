@@ -272,7 +272,7 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       await cancellationService.finalizeCancellation(
         cancellationSession.id!,
         userId,
-        'continued'
+        'pending-cancellation'
       );
     }
     
@@ -286,7 +286,7 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       await cancellationService.finalizeCancellation(
         cancellationSession.id!,
         userId,
-        'continued'
+        'pending-cancellation'
       );
     }
     
@@ -399,7 +399,7 @@ export default function CancellationFlow({ isOpen, onClose, onJobFoundResponse }
       await cancellationService.finalizeCancellation(
         cancellationSession.id!,
         userId,
-        'cancelled'
+        'pending-cancellation'
       );
     }
     

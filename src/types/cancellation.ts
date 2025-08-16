@@ -19,6 +19,7 @@ export type CancellationOutcome =
   | 'cancelled' 
   | 'continued' 
   | 'downsell_accepted' 
+  | 'pending-cancellation'
   | 'abandoned' 
   | 'error';
 

@@ -39,16 +39,27 @@ export class CancellationService {
       // Assign A/B testing variant (pass existing cancellation to avoid duplicate DB call)
       const variant = await getOrAssignVariant(userId, existingCancellation);
       
-      if (existingCancellation && !existingCancellation.final_outcome) {
-        // Return existing session but always start from 'initial' step
-        // This ensures users always see the "Have you found a job yet?" screen
-        // while preserving their previous data for restoration
+      if (existingCancellation) {
+        // Reuse existing cancellation object preserving all data
+        // Only ensure downsell variant consistency
+        const existingVariant = existingCancellation.downsell_variant;
+        
+        // Verify the variant matches what would be assigned (should always match due to deterministic assignment)
+        if (existingVariant !== variant) {
+          logSecurityEvent('variant_mismatch_detected', userId, { 
+            existingVariant,
+            calculatedVariant: variant,
+            cancellationId: existingCancellation.id
+          });
+          // Use the existing variant to maintain consistency
+        }
+
         const session: CancellationSession = {
           id: existingCancellation.id,
           userId,
           subscriptionId: subscription.id,
-          variant: existingCancellation.downsell_variant,
-          currentStep: 'initial', // Always start from initial step
+          variant: existingVariant, // Always use the existing variant
+          currentStep: 'initial', // Always start from initial step for UX
           jobFound: existingCancellation.job_found,
           foundWithMigrateMate: existingCancellation.found_with_migrate_mate,
           feedbackText: existingCancellation.feedback_text || undefined,
@@ -62,9 +73,9 @@ export class CancellationService {
 
         logSecurityEvent('cancellation_session_resumed', userId, { 
           sessionId: session.id,
-          variant,
-          currentStep: 'initial', // Always log as starting from initial
-          previousStep: existingCancellation.cancellation_step // Track where they were before
+          variant: existingVariant,
+          currentStep: 'initial',
+          hasExistingData: !!(session.jobFound !== null || session.feedbackText || session.finalOutcome)
         });
 
         return { success: true, data: session };
