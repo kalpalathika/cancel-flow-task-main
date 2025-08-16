@@ -33,7 +33,7 @@ A focused **Next.js (App Router)** module that runs a secure, experiment-ready *
 
 - Environment variables validated **server-side only** (hard fail if missing).
 - **Admin client** is never created on the client.
-- **RLS policies** in Supabase enforce user isolation (`user_id = auth.uid()`).
+- **RLS policies** in Supabase enforce user isolation (`user_id = auth.uid()`) - Incomplete.
 - Payloads sanitized with `sanitizeForDatabase(...)`.
 - **CSRF protection** added for server actions/endpoints.
 - Security/audit events logged via `logSecurityEvent`.
@@ -67,6 +67,26 @@ NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # server only
 
+create .env.local and place the .env.example above with actual keys in it
 npm run db:setup
+```
+
+## Future Enhancements
+
+This repository already contains a working implementation of the cancellation & downsell flow.  
+To move towards production readiness, the following items are planned for the future:
+
+- Unit tests for core logic (`SecureDatabase`, cancellation service, flow transitions).  
+- Integration tests for Supabase database interactions and end-to-end user flows.  
+- Webpack or other build optimizations for smaller bundles and faster deploys.  
+- Accessibility validations (WCAG 2.1 AA) for modals, forms, and keyboard navigation.  
+- CI/CD pipeline with linting, type checks, and automated testing.  
+- Monitoring and analytics (e.g., Sentry, Datadog, Supabase logs).  
+- Performance tuning (caching, rate limits, optimized database indexes).  
+
+---
+
+These enhancements are not implemented yet — they are planned for future iterations to make the codebase fully production-ready.
+
 
 
